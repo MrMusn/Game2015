@@ -63,15 +63,7 @@ public class Main extends Application {
 	// | | (1,1) |
 	// -------------------------------------------
 
-<<<<<<< HEAD
 	private String[] ips = { "10.10.133.180" };
-=======
-<<<<<<< HEAD
-	private String[] ips = { "10.10.140.162"};
-=======
-	private String[] ips = { "10.10.133.180", "10.10.140.144" };
->>>>>>> 1cb5124df5cb915b4158563a221eaf9889ba82a1
->>>>>>> 0ee2918fbb39ecc20fe0f77bbc2cb05b49eac32e
 
 	private ServerSocket srvSock;
 
@@ -98,7 +90,6 @@ public class Main extends Application {
 		ServerSocket srvSock = new ServerSocket(55551);
 		setSS(srvSock);
 
-
 		new Thread(new Runnable() {
 			Socket sock;
 
@@ -106,42 +97,22 @@ public class Main extends Application {
 			public void run() {
 				while (true) {
 					try {
-<<<<<<< HEAD
-						sock = srvSock.accept();
-						synchronized (this) {
-							BufferedReader reader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
-							final String playerLine = reader.readLine();
-							final String[] playerArr = playerLine.split(" ");
-							System.out.println(playerLine);
-
-							Player player = new Player(playerArr[1], Integer.parseInt(playerArr[2]), Integer.parseInt(playerArr[3]), "up");
-							player.setReader(reader);
-							player.setOs(sock.getOutputStream());
-							players.add(player);
-							player.socket = sock;
-							Platform.runLater(new Runnable() {
-								@Override
-								public void run() {
-									addPlayerToField(player.getXpos(), player.getYpos());
-								}
-							});
-						}
-=======
-						Socket sock = srvSock.accept();
-<<<<<<< HEAD
+						this.sock = srvSock.accept();
 						synchronized (this) {
 							BufferedReader reader = new BufferedReader(
-									new InputStreamReader(sock.getInputStream()));
+									new InputStreamReader(
+											this.sock.getInputStream()));
 							final String playerLine = reader.readLine();
 							final String[] playerArr = playerLine.split(" ");
 							System.out.println(playerLine);
 
-							Player player = new Player(playerArr[1], Integer
-									.parseInt(playerArr[2]), Integer
-									.parseInt(playerArr[3]), "up");
+							Player player = new Player(playerArr[1],
+									Integer.parseInt(playerArr[2]),
+									Integer.parseInt(playerArr[3]), "up");
 							player.setReader(reader);
-							player.setOs(sock.getOutputStream());
-							players.add(player);
+							player.setOs(this.sock.getOutputStream());
+							Main.this.players.add(player);
+							player.socket = this.sock;
 							Platform.runLater(new Runnable() {
 								@Override
 								public void run() {
@@ -150,28 +121,6 @@ public class Main extends Application {
 								}
 							});
 						}
-=======
-						BufferedReader reader = new BufferedReader(
-								new InputStreamReader(sock.getInputStream()));
-						final String playerLine = reader.readLine();
-						final String[] playerArr = playerLine.split(" ");
-						System.out.println(playerLine);
-
-						Player player = new Player(playerArr[1],
-								Integer.parseInt(playerArr[2]),
-								Integer.parseInt(playerArr[3]), "up");
-						player.setReader(reader);
-						player.setOs(sock.getOutputStream());
-						players.add(player);
-						Platform.runLater(new Runnable() {
-							@Override
-							public void run() {
-								addPlayerToField(player.getXpos(),
-										player.getYpos());
-							}
-						});
->>>>>>> 1cb5124df5cb915b4158563a221eaf9889ba82a1
->>>>>>> 0ee2918fbb39ecc20fe0f77bbc2cb05b49eac32e
 					} catch (IOException e) {
 					}
 				}
@@ -183,15 +132,12 @@ public class Main extends Application {
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				for (Player player : players) {
+				for (Player player : Main.this.players) {
 					try {
 						String line;
-<<<<<<< HEAD
-						if ((player.getReader() != null)
+
+						if (player.getReader() != null
 								&& (line = player.getReader().readLine()) != null) {
-=======
-						if (player.getReader() != null && (line = player.getReader().readLine()) != null) {
->>>>>>> 0ee2918fbb39ecc20fe0f77bbc2cb05b49eac32e
 							String[] lineArr = line.split(" ");
 
 							if (lineArr[0].equalsIgnoreCase("move")) {
@@ -219,14 +165,10 @@ public class Main extends Application {
 		}).start();
 	}
 
-<<<<<<< HEAD
-	public void writeAction(String msg) throws UnsupportedEncodingException, IOException {
-		System.out.println(players.get(0).socket.isConnected());
-=======
 	public void writeAction(String msg) throws UnsupportedEncodingException,
 			IOException {
->>>>>>> 1cb5124df5cb915b4158563a221eaf9889ba82a1
-		for (Player player : players) {
+		System.out.println(this.players.get(0).socket.isConnected());
+		for (Player player : this.players) {
 			player.getOs().write(msg.getBytes("UTF-8"));
 		}
 	}
@@ -311,48 +253,8 @@ public class Main extends Application {
 			primaryStage.setScene(scene);
 			primaryStage.show();
 
-<<<<<<< HEAD
-			players = new ArrayList<Player>();
+			this.players = new ArrayList<Player>();
 
-			scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-				switch (event.getCode()) {
-				case UP:
-					playerMoved(0, -1, "up");
-					try {
-						writeAction("MOVE " + me.getXpos() + " " + me.getYpos());
-					} catch (Exception e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-					break;
-				case DOWN:
-					playerMoved(0, +1, "down");
-					try {
-						writeAction("MOVE " + me.getXpos() + " " + me.getYpos());
-					} catch (Exception e1) {e1.printStackTrace();}
-					break;
-				case LEFT:
-					playerMoved(-1, 0, "left");
-					try {
-						writeAction("MOVE " + me.getXpos() + " " + me.getYpos());
-					} catch (Exception e1) {e1.printStackTrace();}
-					break;
-				case RIGHT:
-					playerMoved(+1, 0, "right");
-					try {
-						writeAction("MOVE " + me.getXpos() + " " + me.getYpos());
-					} catch (Exception e1) {e1.printStackTrace();}
-					break;
-				case L:
-					synchronized (this) {
-						try {
-							initListen();
-							Thread.sleep(3000);
-							initConnect();
-							listen();
-						} catch (Exception e) {
-							e.printStackTrace();
-=======
 			scene.addEventFilter(
 					KeyEvent.KEY_PRESSED,
 					event -> {
@@ -405,25 +307,14 @@ public class Main extends Application {
 									e.printStackTrace();
 								}
 							}
-							break;
-						default:
-							break;
->>>>>>> 1cb5124df5cb915b4158563a221eaf9889ba82a1
 						}
 					});
 
 			// Setting up standard players
-
-<<<<<<< HEAD
-			me = new Player("PsykoDennis", 6, 2, "up");
-			players.add(me);
-			this.fields[6][2].setGraphic(new ImageView(hero_up));
-=======
 			me = new Player("PsykoHenrik", 13, 18, "up");
-			players.add(me);
+			this.players.add(me);
 			this.fields[me.getXpos()][me.getYpos()].setGraphic(new ImageView(
 					hero_up));
->>>>>>> 1cb5124df5cb915b4158563a221eaf9889ba82a1
 
 			this.scoreList.setText(getScoreList());
 		} catch (Exception e) {
@@ -481,14 +372,14 @@ public class Main extends Application {
 
 	public String getScoreList() {
 		StringBuffer b = new StringBuffer(100);
-		for (Player p : players) {
+		for (Player p : this.players) {
 			b.append(p + "\r\n");
 		}
 		return b.toString();
 	}
 
 	public Player getPlayerAt(int x, int y) {
-		for (Player p : players) {
+		for (Player p : this.players) {
 			if (p.getXpos() == x && p.getYpos() == y) {
 				return p;
 			}
