@@ -63,7 +63,7 @@ public class Main extends Application {
 	// | | (1,1) |
 	// -------------------------------------------
 
-	private String[] ips = { "10.10.133.180", "10.10.140.144" };
+	private String[] ips = { "10.10.133.180" };
 
 	private ServerSocket srvSock;
 
@@ -97,25 +97,27 @@ public class Main extends Application {
 				while (true) {
 					try {
 						Socket sock = srvSock.accept();
-						BufferedReader reader = new BufferedReader(
-								new InputStreamReader(sock.getInputStream()));
-						final String playerLine = reader.readLine();
-						final String[] playerArr = playerLine.split(" ");
-						System.out.println(playerLine);
+						synchronized (this) {
+							BufferedReader reader = new BufferedReader(
+									new InputStreamReader(sock.getInputStream()));
+							final String playerLine = reader.readLine();
+							final String[] playerArr = playerLine.split(" ");
+							System.out.println(playerLine);
 
-						Player player = new Player(playerArr[1],
-								Integer.parseInt(playerArr[2]),
-								Integer.parseInt(playerArr[3]), "up");
-						player.setReader(reader);
-						player.setOs(sock.getOutputStream());
-						players.add(player);
-						Platform.runLater(new Runnable() {
-							@Override
-							public void run() {
-								addPlayerToField(player.getXpos(),
-										player.getYpos());
-							}
-						});
+							Player player = new Player(playerArr[1], Integer
+									.parseInt(playerArr[2]), Integer
+									.parseInt(playerArr[3]), "up");
+							player.setReader(reader);
+							player.setOs(sock.getOutputStream());
+							players.add(player);
+							Platform.runLater(new Runnable() {
+								@Override
+								public void run() {
+									addPlayerToField(player.getXpos(),
+											player.getYpos());
+								}
+							});
+						}
 					} catch (IOException e) {
 					}
 				}
@@ -130,7 +132,8 @@ public class Main extends Application {
 				for (Player player : players) {
 					try {
 						String line;
-						if ((line = player.getReader().readLine()) != null) {
+						if ((player.getReader() != null)
+								&& (line = player.getReader().readLine()) != null) {
 							String[] lineArr = line.split(" ");
 
 							if (lineArr[0].equalsIgnoreCase("move")) {
@@ -290,7 +293,7 @@ public class Main extends Application {
 							synchronized (this) {
 								try {
 									initListen();
-									Thread.sleep(10000);
+									Thread.sleep(3000);
 									initConnect();
 									listen();
 								} catch (Exception e) {
