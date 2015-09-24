@@ -44,7 +44,7 @@ public class Main extends Application {
 	private TextArea scoreList;
 
 	private String[] board = { // 20x20
-	"wwwwwwwwwwwwwwwwwwww", "w        ww        w", "w w  w  www w  w  ww",
+			"wwwwwwwwwwwwwwwwwwww", "w        ww        w", "w w  w  www w  w  ww",
 			"w w  w   ww w  w  ww", "w  w               w",
 			"w w w w w w w  w  ww", "w w     www w  w  ww",
 			"w w     w w w  w  ww", "w   w w  w  w  w   w",
@@ -53,7 +53,7 @@ public class Main extends Application {
 			"w         w w  w  ww", "w        w     w  ww",
 			"w  w              ww", "w  w www  w w  ww ww",
 			"w w      ww w     ww", "w   w   ww  w      w",
-			"wwwwwwwwwwwwwwwwwwww" };
+	"wwwwwwwwwwwwwwwwwwww" };
 
 	// -------------------------------------------
 	// | Maze: (0,0) | Score: (1,0) |
@@ -89,6 +89,7 @@ public class Main extends Application {
 		ServerSocket srvSock = new ServerSocket(55551);
 		setSS(srvSock);
 
+
 		new Thread(new Runnable() {
 
 			@Override
@@ -97,12 +98,27 @@ public class Main extends Application {
 					try (Socket sock = srvSock.accept();
 							BufferedReader reader = new BufferedReader(
 									new InputStreamReader(sock.getInputStream()));) {
-						System.out.println(reader.readLine());
+						final String playerLine = reader.readLine();
+						final String[] playerArr = playerLine.split(" ");
+						System.out.println(playerLine);
+
+						Player player = new Player(playerArr[1], Integer.parseInt(playerArr[2]), Integer.parseInt(playerArr[3]), "up");
+						players.add(player);
+						Platform.runLater(new Runnable() {
+							@Override
+							public void run() {
+								addPlayerToField(player.getXpos(), player.getYpos());
+							}
+						});
 					} catch (IOException e) {
 					}
 				}
 			}
 		}).start();
+	}
+
+	public void addPlayerToField(int x, int y) {
+		this.fields[x][y].setGraphic(new ImageView(hero_up));
 	}
 
 	public void setSS(ServerSocket ss) {
@@ -275,9 +291,8 @@ public class Main extends Application {
 
 	public Player getPlayerAt(int x, int y) {
 		for (Player p : players) {
-			if (p.getXpos() == x && p.getYpos() == y) {
+			if (p.getXpos() == x && p.getYpos() == y)
 				return p;
-			}
 		}
 		return null;
 	}
