@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -62,7 +63,7 @@ public class Main extends Application {
 	// | | (1,1) |
 	// -------------------------------------------
 
-	private String[] ips = { "10.10.133.180" };
+	private String[] ips = { "10.10.140.162", "10.10.140.144" };
 
 	private ServerSocket srvSock;
 
@@ -118,7 +119,7 @@ public class Main extends Application {
 		}).start();
 	}
 
-	public void update() {
+	public void listen() {
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -151,6 +152,12 @@ public class Main extends Application {
 			}
 
 		}).start();
+	}
+
+	public void writeAction(String msg) throws UnsupportedEncodingException, IOException {
+		for (Player player : players) {
+			player.getOs().write(msg.getBytes("UTF-8"));
+		}
 	}
 
 	public void addPlayerToField(int x, int y) {
@@ -237,15 +244,30 @@ public class Main extends Application {
 				switch (event.getCode()) {
 				case UP:
 					playerMoved(0, -1, "up");
+					try {
+						writeAction("MOVE " + me.getXpos() + " " + me.getYpos());
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
 					break;
 				case DOWN:
 					playerMoved(0, +1, "down");
+					try {
+						writeAction("MOVE " + me.getXpos() + " " + me.getYpos());
+					} catch (Exception e1) {e1.printStackTrace();}
 					break;
 				case LEFT:
 					playerMoved(-1, 0, "left");
+					try {
+						writeAction("MOVE " + me.getXpos() + " " + me.getYpos());
+					} catch (Exception e1) {e1.printStackTrace();}
 					break;
 				case RIGHT:
 					playerMoved(+1, 0, "right");
+					try {
+						writeAction("MOVE " + me.getXpos() + " " + me.getYpos());
+					} catch (Exception e1) {e1.printStackTrace();}
 					break;
 				case L:
 					synchronized (this) {
@@ -253,6 +275,7 @@ public class Main extends Application {
 							initListen();
 							Thread.sleep(10000);
 							initConnect();
+							listen();
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
@@ -265,9 +288,9 @@ public class Main extends Application {
 
 			// Setting up standard players
 
-			me = new Player("PsykoHenrik", 13, 27, "up");
+			me = new Player("PsykoDennis", 5, 2, "up");
 			players.add(me);
-			this.fields[9][4].setGraphic(new ImageView(hero_up));
+			this.fields[5][2].setGraphic(new ImageView(hero_up));
 
 			this.scoreList.setText(getScoreList());
 		} catch (Exception e) {
