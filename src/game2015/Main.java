@@ -89,20 +89,21 @@ public class Main extends Application {
 		ServerSocket srvSock = new ServerSocket(55551);
 		setSS(srvSock);
 
-
 		new Thread(new Runnable() {
 
 			@Override
 			public void run() {
 				while (true) {
-					try (Socket sock = srvSock.accept();
-							BufferedReader reader = new BufferedReader(
-									new InputStreamReader(sock.getInputStream()));) {
+					try {
+						Socket sock = srvSock.accept();
+						BufferedReader reader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 						final String playerLine = reader.readLine();
 						final String[] playerArr = playerLine.split(" ");
 						System.out.println(playerLine);
 
 						Player player = new Player(playerArr[1], Integer.parseInt(playerArr[2]), Integer.parseInt(playerArr[3]), "up");
+						player.setReader(reader);
+						player.setOs(sock.getOutputStream());
 						players.add(player);
 						Platform.runLater(new Runnable() {
 							@Override
@@ -114,6 +115,41 @@ public class Main extends Application {
 					}
 				}
 			}
+		}).start();
+	}
+
+	public void update() {
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				for (Player player : players) {
+					try {
+						String line;
+						if ((line = player.getReader().readLine()) != null) {
+							String[] lineArr = line.split(" ");
+
+							if (lineArr[0].equalsIgnoreCase("move")) {
+								final int x = (Integer.parseInt(lineArr[1]));
+								final int y = (Integer.parseInt(lineArr[2]));
+
+								if (player.getXpos() - x < 0) {
+									playerMoved(player, 1, 0, "right"); //right
+								} else if (player.getXpos() - x > 0) {
+									playerMoved(player, -1, 0, "left"); //left
+								} else if (player.getYpos() - y < 0) {
+									playerMoved(player, 0, 1, "down"); //down
+								} else if (player.getYpos() - y > 0) {
+									playerMoved(player, 0, -1, "up"); //up
+								}
+							}
+						}
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
+
 		}).start();
 	}
 
@@ -239,19 +275,19 @@ public class Main extends Application {
 		}
 	}
 
-	public void playerMoved(int delta_x, int delta_y, String direction) {
-		me.direction = direction;
-		int x = me.getXpos(), y = me.getYpos();
+	public void playerMoved(Player player, int delta_x, int delta_y, String direction) {
+		player.direction = direction;
+		int x = player.getXpos(), y = player.getYpos();
 
 		if (this.board[y + delta_y].charAt(x + delta_x) == 'w') {
-			me.addPoints(-1);
+			player.addPoints(-1);
 		} else {
 			Player p = getPlayerAt(x + delta_x, y + delta_y);
 			if (p != null) {
-				me.addPoints(10);
+				player.addPoints(10);
 				p.addPoints(-10);
 			} else {
-				me.addPoints(1);
+				player.addPoints(1);
 
 				this.fields[x][y].setGraphic(new ImageView(image_floor));
 				x += delta_x;
@@ -274,11 +310,16 @@ public class Main extends Application {
 				}
 				;
 
-				me.setXpos(x);
-				me.setYpos(y);
+				player.setXpos(x);
+				player.setYpos(y);
 			}
 		}
 		this.scoreList.setText(getScoreList());
+
+	}
+
+	public void playerMoved(int delta_x, int delta_y, String direction) {
+		playerMoved(me, delta_x, delta_y, direction);
 	}
 
 	public String getScoreList() {

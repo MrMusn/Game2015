@@ -1,6 +1,7 @@
 package game2015;
 
-import java.net.Socket;
+import java.io.BufferedReader;
+import java.io.OutputStream;
 
 public class Player {
 	String name;
@@ -8,7 +9,8 @@ public class Player {
 	int ypos;
 	int point;
 	String direction;
-	private Socket socket;
+	private BufferedReader reader;
+	private OutputStream os;
 
 	public Player(String name, int xpos, int ypos, String direction) {
 		this.name = name;
@@ -18,8 +20,20 @@ public class Player {
 		this.point = 0;
 	}
 
-	public void setSocket(Socket sock) {
-		this.socket = sock;
+	public BufferedReader getReader() {
+		return this.reader;
+	}
+
+	public void setReader(BufferedReader reader) {
+		this.reader = reader;
+	}
+
+	public OutputStream getOs() {
+		return this.os;
+	}
+
+	public void setOs(OutputStream os) {
+		this.os = os;
 	}
 
 	public String getName() {
