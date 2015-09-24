@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -44,7 +45,7 @@ public class Main extends Application {
 	private TextArea scoreList;
 
 	private String[] board = { // 20x20
-			"wwwwwwwwwwwwwwwwwwww", "w        ww        w", "w w  w  www w  w  ww",
+	"wwwwwwwwwwwwwwwwwwww", "w        ww        w", "w w  w  www w  w  ww",
 			"w w  w   ww w  w  ww", "w  w               w",
 			"w w w w w w w  w  ww", "w w     www w  w  ww",
 			"w w     w w w  w  ww", "w   w w  w  w  w   w",
@@ -53,7 +54,7 @@ public class Main extends Application {
 			"w         w w  w  ww", "w        w     w  ww",
 			"w  w              ww", "w  w www  w w  ww ww",
 			"w w      ww w     ww", "w   w   ww  w      w",
-	"wwwwwwwwwwwwwwwwwwww" };
+			"wwwwwwwwwwwwwwwwwwww" };
 
 	// -------------------------------------------
 	// | Maze: (0,0) | Score: (1,0) |
@@ -122,7 +123,7 @@ public class Main extends Application {
 		}).start();
 	}
 
-	public void update() {
+	public void listen() {
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -155,6 +156,13 @@ public class Main extends Application {
 			}
 
 		}).start();
+	}
+
+	public void writeAction(String msg) throws UnsupportedEncodingException,
+			IOException {
+		for (Player player : players) {
+			player.getOs().write(msg.getBytes("UTF-8"));
+		}
 	}
 
 	public void addPlayerToField(int x, int y) {
@@ -237,35 +245,63 @@ public class Main extends Application {
 			primaryStage.setScene(scene);
 			primaryStage.show();
 
-			scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-				switch (event.getCode()) {
-				case UP:
-					playerMoved(0, -1, "up");
-					break;
-				case DOWN:
-					playerMoved(0, +1, "down");
-					break;
-				case LEFT:
-					playerMoved(-1, 0, "left");
-					break;
-				case RIGHT:
-					playerMoved(+1, 0, "right");
-					break;
-				case L:
-					synchronized (this) {
-						try {
-							initListen();
-							Thread.sleep(10000);
-							initConnect();
-						} catch (Exception e) {
-							e.printStackTrace();
+			scene.addEventFilter(
+					KeyEvent.KEY_PRESSED,
+					event -> {
+						switch (event.getCode()) {
+						case UP:
+							playerMoved(0, -1, "up");
+							try {
+								writeAction("MOVE " + me.getXpos() + " "
+										+ me.getYpos());
+							} catch (Exception e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+							break;
+						case DOWN:
+							playerMoved(0, +1, "down");
+							try {
+								writeAction("MOVE " + me.getXpos() + " "
+										+ me.getYpos());
+							} catch (Exception e1) {
+								e1.printStackTrace();
+							}
+							break;
+						case LEFT:
+							playerMoved(-1, 0, "left");
+							try {
+								writeAction("MOVE " + me.getXpos() + " "
+										+ me.getYpos());
+							} catch (Exception e1) {
+								e1.printStackTrace();
+							}
+							break;
+						case RIGHT:
+							playerMoved(+1, 0, "right");
+							try {
+								writeAction("MOVE " + me.getXpos() + " "
+										+ me.getYpos());
+							} catch (Exception e1) {
+								e1.printStackTrace();
+							}
+							break;
+						case L:
+							synchronized (this) {
+								try {
+									initListen();
+									Thread.sleep(10000);
+									initConnect();
+									listen();
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+							}
+							break;
+						default:
+							break;
 						}
-					}
-					break;
-				default:
-					break;
-				}
-			});
+					});
 
 			// Setting up standard players
 
