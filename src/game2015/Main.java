@@ -39,7 +39,7 @@ public class Main extends Application {
 	public static Image hero_right, hero_left, hero_up, hero_down;
 
 	public static Player me;
-	public static List<Player> players = new ArrayList<Player>();
+	public List<Player> players;
 
 	private Label[][] fields;
 	private TextArea scoreList;
@@ -63,7 +63,7 @@ public class Main extends Application {
 	// | | (1,1) |
 	// -------------------------------------------
 
-	private String[] ips = { "10.10.140.162", "10.10.140.144" };
+	private String[] ips = { "10.10.140.162"};
 
 	private ServerSocket srvSock;
 
@@ -90,28 +90,33 @@ public class Main extends Application {
 		ServerSocket srvSock = new ServerSocket(55551);
 		setSS(srvSock);
 
+
 		new Thread(new Runnable() {
+			Socket sock;
 
 			@Override
 			public void run() {
 				while (true) {
 					try {
-						Socket sock = srvSock.accept();
-						BufferedReader reader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
-						final String playerLine = reader.readLine();
-						final String[] playerArr = playerLine.split(" ");
-						System.out.println(playerLine);
+						sock = srvSock.accept();
+						synchronized (this) {
+							BufferedReader reader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+							final String playerLine = reader.readLine();
+							final String[] playerArr = playerLine.split(" ");
+							System.out.println(playerLine);
 
-						Player player = new Player(playerArr[1], Integer.parseInt(playerArr[2]), Integer.parseInt(playerArr[3]), "up");
-						player.setReader(reader);
-						player.setOs(sock.getOutputStream());
-						players.add(player);
-						Platform.runLater(new Runnable() {
-							@Override
-							public void run() {
-								addPlayerToField(player.getXpos(), player.getYpos());
-							}
-						});
+							Player player = new Player(playerArr[1], Integer.parseInt(playerArr[2]), Integer.parseInt(playerArr[3]), "up");
+							player.setReader(reader);
+							player.setOs(sock.getOutputStream());
+							players.add(player);
+							player.socket = sock;
+							Platform.runLater(new Runnable() {
+								@Override
+								public void run() {
+									addPlayerToField(player.getXpos(), player.getYpos());
+								}
+							});
+						}
 					} catch (IOException e) {
 					}
 				}
@@ -126,7 +131,7 @@ public class Main extends Application {
 				for (Player player : players) {
 					try {
 						String line;
-						if ((line = player.getReader().readLine()) != null) {
+						if (player.getReader() != null && (line = player.getReader().readLine()) != null) {
 							String[] lineArr = line.split(" ");
 
 							if (lineArr[0].equalsIgnoreCase("move")) {
@@ -155,6 +160,7 @@ public class Main extends Application {
 	}
 
 	public void writeAction(String msg) throws UnsupportedEncodingException, IOException {
+		System.out.println(players.get(0).socket.isConnected());
 		for (Player player : players) {
 			player.getOs().write(msg.getBytes("UTF-8"));
 		}
@@ -240,6 +246,8 @@ public class Main extends Application {
 			primaryStage.setScene(scene);
 			primaryStage.show();
 
+			players = new ArrayList<Player>();
+
 			scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
 				switch (event.getCode()) {
 				case UP:
@@ -273,7 +281,7 @@ public class Main extends Application {
 					synchronized (this) {
 						try {
 							initListen();
-							Thread.sleep(10000);
+							Thread.sleep(3000);
 							initConnect();
 							listen();
 						} catch (Exception e) {
@@ -288,9 +296,9 @@ public class Main extends Application {
 
 			// Setting up standard players
 
-			me = new Player("PsykoDennis", 5, 2, "up");
+			me = new Player("PsykoDennis", 6, 2, "up");
 			players.add(me);
-			this.fields[5][2].setGraphic(new ImageView(hero_up));
+			this.fields[6][2].setGraphic(new ImageView(hero_up));
 
 			this.scoreList.setText(getScoreList());
 		} catch (Exception e) {

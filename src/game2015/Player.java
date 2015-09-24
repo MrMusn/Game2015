@@ -2,6 +2,7 @@ package game2015;
 
 import java.io.BufferedReader;
 import java.io.OutputStream;
+import java.net.Socket;
 
 public class Player {
 	String name;
@@ -11,6 +12,7 @@ public class Player {
 	String direction;
 	private BufferedReader reader;
 	private OutputStream os;
+	public Socket socket;
 
 	public Player(String name, int xpos, int ypos, String direction) {
 		this.name = name;
