@@ -27,8 +27,8 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-	private static final String NAME = "KemoKalle";
-	private static final int X_POS = 10;
+	private static final String NAME = "Henning5000";
+	private static final int X_POS = 9;
 	private static final int Y_POS = 4;
 
 	private static final int S_PORT = 55552;
@@ -37,7 +37,7 @@ public class Main extends Application {
 	private static final String IP_RANGE = "192.168.0.0/16";
 
 	/** If null, scan ips automatically using range {@link Main#IP_RANGE} */
-	private final static String[] ipArr = { "10.10.133.157" };
+	private final static String[] ipArr = { "10.10.139.229"};
 	/**
 	 * { "10.10.133.157", "10.10.140.154", "10.10.140.228", "10.10.149.132" };
 	 * // Anders, Muddz, Simon, Mr // Adem
@@ -83,9 +83,9 @@ public class Main extends Application {
 	private void initConnect() {
 		new Thread(() -> {
 			for (String ip : ips) {
-				final String nameStr = "name " + this.me.getName() + " "
-						+ this.me.getXpos() + " " + this.me.getYpos();
-				writeMsg(nameStr, ip);
+				final String nameStr = "name " + Main.me.getName() + " "
+						+ Main.me.getXpos() + " " + Main.me.getYpos();
+				Main.writeMsg(nameStr, ip);
 			}
 		}).start();
 	}
@@ -141,59 +141,64 @@ public class Main extends Application {
 		// final long start = System.currentTimeMillis();
 
 		new Thread(
-				() -> {
-					// Run forever as this handles request delegation
-					while (true) { // (start + (30 * 1000)) >
-						// System.currentTimeMillis()) { //30 seconds to
-						// connect
-						Socket sock = null;
-						try {
-							sock = srvSocket.accept();
-							BufferedReader reader = new BufferedReader(
-									new InputStreamReader(sock.getInputStream()));
-
-							final String line = reader.readLine();
-							final String[] lineArr = line.split(" ");
-							System.out.println(line);
-
-							final InetAddress InetAdr = sock.getInetAddress();
-							final Player player = getPlayerBySockAdr(InetAdr);
-
-							if (line.toLowerCase().startsWith("name")) {
-								regPlayer(lineArr, InetAdr);
-							} else if (line.toLowerCase().startsWith("move")) {
-								regPlayerMove(lineArr, player);
-							} else if (line.toLowerCase().startsWith("point")) {
-								regPlayerPoints(lineArr);
-							} else if (line.toLowerCase().startsWith("wait")) {
-								if (this.me.getTime() <= player.getTime()) {
-									while (!this.me.getPLAYER_STATE().equals(
-											Player.STATE.IDLE)) {
-
-									}
-
-									writeMsg("ok",
-											InetAdr.toString().replace("/", ""));
-								}
-							} else if (line.toLowerCase().startsWith("ok")) {
-								synchronized (this.me) {
-									this.me.setOkCounter(this.me.getOkCounter() + 1);
-								}
-							}
-							int otherTime = Integer
-									.parseInt(lineArr[lineArr.length - 1]);
-							if (otherTime > me.getTime()) {
-								me.setTime(otherTime);
-							}
-						} catch (IOException e) {
-							e.printStackTrace();
-						} finally {
+				new Runnable() {
+					@Override
+					public void run() {
+						// Run forever as this handles request delegation
+						while (true) { // (start + (30 * 1000)) >
+							// System.currentTimeMillis()) { //30 seconds to
+							// connect
+							Socket sock = null;
 							try {
-								sock.close();
+								sock = srvSocket.accept();
+								BufferedReader reader = new BufferedReader(
+										new InputStreamReader(sock.getInputStream()));
+
+								final String line = reader.readLine();
+								final String[] lineArr = line.split(" ");
+								System.out.println(line);
+
+								final InetAddress InetAdr = sock.getInetAddress();
+								final Player player = getPlayerBySockAdr(InetAdr);
+
+								if (line.toLowerCase().startsWith("name")) {
+									regPlayer(lineArr, InetAdr);
+								} else if (line.toLowerCase().startsWith("move")) {
+									regPlayerMove(lineArr, player);
+								} else if (line.toLowerCase().startsWith("point")) {
+									regPlayerPoints(lineArr);
+								} else if (line.toLowerCase().startsWith("wait")) {
+									if (Main.me.getTime() <= player.getTime()) {
+										System.out.println("asjdlk");
+										while (!Main.me.getPLAYER_STATE().equals(
+												Player.STATE.IDLE)) {
+
+										}
+
+										Main.writeMsg("ok",
+												InetAdr.toString().replace("/", ""));
+									}
+								} else if (line.toLowerCase().startsWith("ok")) {
+									synchronized (Main.me) {
+										Main.me.setOkCounter(Main.me.getOkCounter() + 1);
+									}
+								}
+								int otherTime = Integer
+										.parseInt(lineArr[lineArr.length - 1]);
+								if (otherTime > me.getTime()) {
+									me.setTime(otherTime);
+								}
 							} catch (IOException e) {
 								e.printStackTrace();
+							} finally {
+								try {
+									sock.close();
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
 							}
 						}
+
 					}
 				}).start();
 
@@ -272,10 +277,9 @@ public class Main extends Application {
 		final int x = Integer.parseInt(reqLineArr[1]);
 		final int y = Integer.parseInt(reqLineArr[2]);
 
-		if (player == null) {
+		if (player == null)
 			throw new RuntimeException(
 					"Unknown player address for position change");
-		}
 
 		Platform.runLater(() -> {
 			if (player.getXpos() - x < 0) {
@@ -301,10 +305,9 @@ public class Main extends Application {
 	private void regPlayerPoints(final String[] reqLineArr) {
 		final Player player = getPlayerByName(reqLineArr[1]);
 
-		if (player == null) {
+		if (player == null)
 			throw new RuntimeException(
 					"Unknown name received for point change.");
-		}
 
 		final int pointsChange = Integer.parseInt(reqLineArr[2])
 				- player.getPoints();
@@ -325,9 +328,8 @@ public class Main extends Application {
 	 */
 	private synchronized Player getPlayerBySockAdr(final InetAddress ip) {
 		for (Player p : this.players) {
-			if (p.getIp() != null && p.getIp().toString().equals(ip.toString())) {
+			if (p.getIp() != null && p.getIp().toString().equals(ip.toString()))
 				return p;
-			}
 		}
 
 		return null;
@@ -335,9 +337,8 @@ public class Main extends Application {
 
 	private synchronized Player getPlayerByName(final String name) {
 		for (Player p : this.players) {
-			if (p.getName().equalsIgnoreCase(name)) {
+			if (p.getName().equalsIgnoreCase(name))
 				return p;
-			}
 		}
 
 		return null;
@@ -442,12 +443,12 @@ public class Main extends Application {
 			});
 
 			// Setting up standard players
-			this.me = new Player(NAME, X_POS, Y_POS, "up");
+			Main.me = new Player(NAME, X_POS, Y_POS, "up");
 			// randomizePos(me);
 			synchronized (this) {
-				this.players.add(this.me);
+				this.players.add(Main.me);
 			}
-			this.fields[this.me.getXpos()][this.me.getYpos()]
+			this.fields[Main.me.getXpos()][Main.me.getYpos()]
 					.setGraphic(new ImageView(hero_up));
 
 			this.scoreList.setText(getScoreList());
@@ -480,16 +481,16 @@ public class Main extends Application {
 	}
 
 	public void playerMoved(int delta_x, int delta_y, String direction) {
-		this.me.setPLAYER_STATE(Player.STATE.VENTER_OK);
-		this.me.incTime();
+		Main.me.setPLAYER_STATE(Player.STATE.VENTER_OK);
+		Main.me.incTime();
 
 		for (String ip : ips) {
-			writeMsg("WAIT", ip);
+			Main.writeMsg("WAIT", ip);
 		}
-		while (this.me.getOkCounter() < this.players.size() - 1) {
+		while (Main.me.getOkCounter() < this.players.size() - 1) {
 
 		}
-		playerMoved(this.me, delta_x, delta_y, direction);
+		playerMoved(Main.me, delta_x, delta_y, direction);
 	}
 
 	public void playerMoved(Player player, int delta_x, int delta_y,
@@ -498,18 +499,18 @@ public class Main extends Application {
 		int x = player.getXpos(), y = player.getYpos();
 
 		if (this.board[y + delta_y].charAt(x + delta_x) == 'w') {
-			if (player.equals(this.me)) {
+			if (player.equals(Main.me)) {
 				player.addPoints(-1);
 			}
 		} else {
 			Player p = getPlayerAt(x + delta_x, y + delta_y);
 			if (p != null) {
-				if (player.equals(this.me)) {
+				if (player.equals(Main.me)) {
 					player.addPoints(10);
 					p.addPoints(-10);
 				}
 			} else {
-				if (player.equals(this.me)) {
+				if (player.equals(Main.me)) {
 					player.addPoints(1);
 				}
 
@@ -537,7 +538,7 @@ public class Main extends Application {
 				player.setXpos(x);
 				player.setYpos(y);
 
-				if (player.equals(this.me)) {
+				if (player.equals(Main.me)) {
 					broadcastMove();
 				}
 			}
@@ -556,7 +557,7 @@ public class Main extends Application {
 	 */
 	public static void broadcastPoints(final Player player, final int points) {
 		for (final String ip : ips) {
-			writeMsg("POINT " + player.getName() + " " + points, ip);
+			Main.writeMsg("POINT " + player.getName() + " " + points, ip);
 		}
 	}
 
@@ -565,7 +566,7 @@ public class Main extends Application {
 	 */
 	public void broadcastMove() {
 		for (final String ip : ips) {
-			writeMsg("move " + this.me.getXpos() + " " + this.me.getYpos(), ip);
+			Main.writeMsg("move " + Main.me.getXpos() + " " + Main.me.getYpos(), ip);
 		}
 	}
 
@@ -579,14 +580,13 @@ public class Main extends Application {
 
 	public synchronized Player getPlayerAt(int x, int y) {
 		for (Player p : this.players) {
-			if (p.getXpos() == x && p.getYpos() == y) {
+			if (p.getXpos() == x && p.getYpos() == y)
 				return p;
-			}
 		}
 		return null;
 	}
 
 	public static void main(String[] args) {
-		launch(args);
+		Application.launch(args);
 	}
 }
