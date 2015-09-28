@@ -130,6 +130,10 @@ public class Player {
 		this.okCounter = okCounter;
 	}
 
+	public void setTime(int time) {
+		this.time = time;
+	}
+
 	public void incTime() {
 		this.time++;
 	}

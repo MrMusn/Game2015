@@ -37,7 +37,7 @@ public class Main extends Application {
 	private static final String IP_RANGE = "192.168.0.0/16";
 
 	/** If null, scan ips automatically using range {@link Main#IP_RANGE} */
-	private final static String[] ipArr = { "10.10.133.157", "10.10.140.228" };
+	private final static String[] ipArr = { "10.10.133.157" };
 	/**
 	 * { "10.10.133.157", "10.10.140.154", "10.10.140.228", "10.10.149.132" };
 	 * // Anders, Muddz, Simon, Mr // Adem
@@ -65,7 +65,7 @@ public class Main extends Application {
 	private TextArea scoreList;
 
 	private String[] board = { // 20x20
-	"wwwwwwwwwwwwwwwwwwww", "w        ww        w", "w w  w  www w  w  ww",
+			"wwwwwwwwwwwwwwwwwwww", "w        ww        w", "w w  w  www w  w  ww",
 			"w w  w   ww w  w  ww", "w  w               w",
 			"w w w w w w w  w  ww", "w w     www w  w  ww",
 			"w w     w w w  w  ww", "w   w w  w  w  w   w",
@@ -74,7 +74,7 @@ public class Main extends Application {
 			"w         w w  w  ww", "w        w     w  ww",
 			"w  w              ww", "w  w www  w w  ww ww",
 			"w w      ww w     ww", "w   w   ww  w      w",
-			"wwwwwwwwwwwwwwwwwwww" };
+	"wwwwwwwwwwwwwwwwwwww" };
 
 	/**
 	 * Initializes connection to all other known clients (known ==
@@ -166,17 +166,24 @@ public class Main extends Application {
 							} else if (line.toLowerCase().startsWith("point")) {
 								regPlayerPoints(lineArr);
 							} else if (line.toLowerCase().startsWith("wait")) {
-								if (this.me.getTime() < player.getTime()) {
+								if (this.me.getTime() <= player.getTime()) {
 									while (!this.me.getPLAYER_STATE().equals(
 											Player.STATE.IDLE)) {
 
 									}
-									writeMsg("ok", InetAdr.toString());
+
+									writeMsg("ok",
+											InetAdr.toString().replace("/", ""));
 								}
 							} else if (line.toLowerCase().startsWith("ok")) {
 								synchronized (this.me) {
 									this.me.setOkCounter(this.me.getOkCounter() + 1);
 								}
+							}
+							int otherTime = Integer
+									.parseInt(lineArr[lineArr.length - 1]);
+							if (otherTime > me.getTime()) {
+								me.setTime(otherTime);
 							}
 						} catch (IOException e) {
 							e.printStackTrace();
@@ -201,30 +208,30 @@ public class Main extends Application {
 			final long start = System.currentTimeMillis();
 
 			while (start + (180 * 1000) > System.currentTimeMillis()) { // 180
-					// seconds
-					// to
-					// connect
-					try {
-						Socket sock = this.scanSrvSock.accept();
+				// seconds
+				// to
+				// connect
+				try {
+					Socket sock = this.scanSrvSock.accept();
 
-						final byte[] buffer = new byte[64];
-						if (sock.getInputStream().read(buffer) > 0
-								&& new String(buffer).startsWith("Knock knock")) {
-							sock.getOutputStream().write(
-									"Who is it?".getBytes("UTF-8"));
-							System.out.println("Accepted connection");
-						}
-					} catch (Exception e) {
-						// ignore
-						// e.printStackTrace();
+					final byte[] buffer = new byte[64];
+					if (sock.getInputStream().read(buffer) > 0
+							&& new String(buffer).startsWith("Knock knock")) {
+						sock.getOutputStream().write(
+								"Who is it?".getBytes("UTF-8"));
+						System.out.println("Accepted connection");
 					}
-					try {
-						this.scanSrvSock.close();
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
+				} catch (Exception e) {
+					// ignore
+					// e.printStackTrace();
 				}
-			}).start();
+				try {
+					this.scanSrvSock.close();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
 	}
 
 	/**
