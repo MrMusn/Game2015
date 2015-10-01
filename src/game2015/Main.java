@@ -27,8 +27,8 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-	private static final String NAME = "Henning5000";
-	private static final int X_POS = 9;
+	private static final String NAME = "Natas";
+	private static final int X_POS = 10;
 	private static final int Y_POS = 4;
 
 	private static final int S_PORT = 55552;
@@ -37,7 +37,7 @@ public class Main extends Application {
 	private static final String IP_RANGE = "192.168.0.0/16";
 
 	/** If null, scan ips automatically using range {@link Main#IP_RANGE} */
-	private final static String[] ipArr = { "10.10.132.241" };
+	private final static String[] ipArr = { "10.10.133.157", "10.10.140.69" };
 	/**
 	 * { "10.10.133.157", "10.10.140.154", "10.10.140.228", "10.10.149.132" };
 	 * // Anders, Muddz, Simon, Mr // Adem
@@ -82,6 +82,9 @@ public class Main extends Application {
 	 */
 	private void initConnect() {
 		new Thread(() -> {
+			synchronized (Main.me) {
+				Main.me.incTime();
+			}
 			for (String ip : ips) {
 				final String nameStr = "name " + Main.me.getName() + " "
 						+ Main.me.getXpos() + " " + Main.me.getYpos();
@@ -103,9 +106,6 @@ public class Main extends Application {
 	 *            discarded exception
 	 */
 	private synchronized static void writeMsg(String msg, final String ip) {
-		synchronized (Main.me) {
-			Main.me.incTime();
-		}
 		msg += " " + me.getTime() + "\n";
 
 		Socket sock = null;
@@ -179,7 +179,9 @@ public class Main extends Application {
 										Player.STATE.IDLE)) {
 
 								}
-
+								synchronized (Main.me) {
+									Main.me.incTime();
+								}
 								Main.writeMsg("ok",
 										InetAdr.toString().replace("/", ""));
 							}
@@ -485,6 +487,9 @@ public class Main extends Application {
 	public void playerMoved(int delta_x, int delta_y, String direction) {
 		Main.me.setPLAYER_STATE(Player.STATE.VENTER_OK);
 
+		synchronized (Main.me) {
+			Main.me.incTime();
+		}
 		for (String ip : ips) {
 			Main.writeMsg("WAIT", ip);
 		}
@@ -557,6 +562,9 @@ public class Main extends Application {
 	 *            The new amount of points for this player
 	 */
 	public static void broadcastPoints(final Player player, final int points) {
+		synchronized (Main.me) {
+			Main.me.incTime();
+		}
 		for (final String ip : ips) {
 			Main.writeMsg("POINT " + player.getName() + " " + points, ip);
 		}
@@ -566,6 +574,9 @@ public class Main extends Application {
 	 * Broadcast to all ips that you just moved to a new position
 	 */
 	public void broadcastMove() {
+		synchronized (Main.me) {
+			Main.me.incTime();
+		}
 		for (final String ip : ips) {
 			Main.writeMsg(
 					"move " + Main.me.getXpos() + " " + Main.me.getYpos(), ip);
