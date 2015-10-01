@@ -114,11 +114,11 @@ public class Player {
 		return this.name + ":   " + this.point;
 	}
 
-	public STATE getPLAYER_STATE() {
+	public synchronized STATE getPLAYER_STATE() {
 		return this.PLAYER_STATE;
 	}
 
-	public void setPLAYER_STATE(STATE state) {
+	public synchronized void setPLAYER_STATE(STATE state) {
 		this.PLAYER_STATE = state;
 	}
 
