@@ -186,7 +186,9 @@ public class Main extends Application {
 										InetAdr.toString().replace("/", ""));
 							}
 						} else if (line.toLowerCase().startsWith("ok")) {
-							Main.me.setOkCounter(Main.me.getOkCounter() + 1);
+							synchronized(Main.me){
+								Main.me.setOkCounter(Main.me.getOkCounter() + 1);
+							}
 						}
 					} catch (IOException e) {
 						e.printStackTrace();
@@ -493,11 +495,13 @@ public class Main extends Application {
 		for (String ip : ips) {
 			Main.writeMsg("WAIT", ip);
 		}
+
 		while (Main.me.getOkCounter() < this.players.size() - 1) {
 
 		}
-		playerMoved(Main.me, delta_x, delta_y, direction);
 
+		playerMoved(Main.me, delta_x, delta_y, direction);
+		Main.me.setOkCounter(0);
 		Main.me.setPLAYER_STATE(Player.STATE.IDLE);
 	}
 

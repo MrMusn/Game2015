@@ -122,11 +122,11 @@ public class Player {
 		this.PLAYER_STATE = state;
 	}
 
-	public int getOkCounter() {
+	public synchronized int getOkCounter() {
 		return this.okCounter;
 	}
 
-	public void setOkCounter(int okCounter) {
+	public synchronized void setOkCounter(int okCounter) {
 		this.okCounter = okCounter;
 	}
 
