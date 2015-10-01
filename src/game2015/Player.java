@@ -136,7 +136,6 @@ public class Player {
 
 	public void incTime() {
 		this.time++;
-		System.out.println("My time is: " + this.time);
 	}
 
 	public int getTime() {

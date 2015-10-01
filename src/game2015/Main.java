@@ -8,9 +8,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Random;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -63,7 +63,7 @@ public class Main extends Application {
 	public static Player me;
 	public List<Player> players = new ArrayList<Player>();
 
-	private Queue<String> okQueue = new PriorityQueue<String>();
+	private Queue<String> okQueue = new ConcurrentLinkedQueue<String>();
 
 	private Label[][] fields;
 	private TextArea scoreList;
@@ -162,7 +162,7 @@ public class Main extends Application {
 
 						final String line = reader.readLine();
 						final String[] lineArr = line.split(" ");
-						System.out.println(line);
+						System.out.println("read: " + line);
 
 						int otherTime = Integer.parseInt(lineArr[lineArr.length - 1]);
 
@@ -177,7 +177,6 @@ public class Main extends Application {
 							regPlayerPoints(lineArr);
 						} else if (line.toLowerCase().startsWith("wait")) {
 							if (Main.me.getTime() <= otherTime) {
-								System.out.println(Main.me.getPLAYER_STATE());
 								Main.me.setTime(otherTime);
 								while (Main.me.getPLAYER_STATE().equals(Player.STATE.CR)) {
 
@@ -499,7 +498,6 @@ public class Main extends Application {
 			Main.writeMsg("WAIT", ip);
 		}
 
-		System.out.println(Main.me.getPLAYER_STATE());
 		while (Main.me.getOkCounter() < this.players.size() - 1) {
 
 		}
