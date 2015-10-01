@@ -497,6 +497,8 @@ public class Main extends Application {
 
 		}
 		playerMoved(Main.me, delta_x, delta_y, direction);
+
+		Main.me.setPLAYER_STATE(Player.STATE.IDLE);
 	}
 
 	public void playerMoved(Player player, int delta_x, int delta_y,
