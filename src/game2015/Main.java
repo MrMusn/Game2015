@@ -29,8 +29,8 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-	private static final String NAME = "kongen";
-	private static final int X_POS = 9;
+	private static final String NAME = "SvinePusteren";
+	private static final int X_POS = 6;
 	private static final int Y_POS = 4;
 
 	private static final int S_PORT = 55552;
@@ -39,7 +39,7 @@ public class Main extends Application {
 	private static final String IP_RANGE = "192.168.0.0/16";
 
 	/** If null, scan ips automatically using range {@link Main#IP_RANGE} */
-	private final static String[] ipArr = { "10.10.140.69" };
+	private final static String[] ipArr = { "10.10.140.69", "10.10.133.157" };
 	/**
 	 * { "10.10.133.157", "10.10.140.154", "10.10.140.228", "10.10.149.132" };
 	 * // Anders, Muddz, Simon, Mr // Adem
@@ -187,7 +187,7 @@ public class Main extends Application {
 								Main.writeMsg("ok",
 										InetAdr.toString().replace("/", ""));
 							} else {
-								okQueue.add(InetAdr.toString().replace("/", ""));
+								Main.this.okQueue.add(InetAdr.toString().replace("/", ""));
 							}
 						} else if (line.toLowerCase().startsWith("ok")) {
 							synchronized(Main.me){
@@ -285,9 +285,10 @@ public class Main extends Application {
 		final int x = Integer.parseInt(reqLineArr[1]);
 		final int y = Integer.parseInt(reqLineArr[2]);
 
-		if (player == null)
+		if (player == null) {
 			throw new RuntimeException(
 					"Unknown player address for position change");
+		}
 
 		Platform.runLater(() -> {
 			if (player.getXpos() - x < 0) {
@@ -313,9 +314,10 @@ public class Main extends Application {
 	private void regPlayerPoints(final String[] reqLineArr) {
 		final Player player = getPlayerByName(reqLineArr[1]);
 
-		if (player == null)
+		if (player == null) {
 			throw new RuntimeException(
 					"Unknown name received for point change.");
+		}
 
 		final int pointsChange = Integer.parseInt(reqLineArr[2])
 				- player.getPoints();
@@ -336,8 +338,9 @@ public class Main extends Application {
 	 */
 	private synchronized Player getPlayerBySockAdr(final InetAddress ip) {
 		for (Player p : this.players) {
-			if (p.getIp() != null && p.getIp().toString().equals(ip.toString()))
+			if (p.getIp() != null && p.getIp().toString().equals(ip.toString())) {
 				return p;
+			}
 		}
 
 		return null;
@@ -345,8 +348,9 @@ public class Main extends Application {
 
 	private synchronized Player getPlayerByName(final String name) {
 		for (Player p : this.players) {
-			if (p.getName().equalsIgnoreCase(name))
+			if (p.getName().equalsIgnoreCase(name)) {
 				return p;
+			}
 		}
 
 		return null;
@@ -452,7 +456,7 @@ public class Main extends Application {
 
 			// Setting up standard players
 			Main.me = new Player(NAME, X_POS, Y_POS, "up");
-			// randomizePos(me);
+			randomizePos(me);
 			synchronized (this) {
 				this.players.add(Main.me);
 			}
@@ -485,7 +489,7 @@ public class Main extends Application {
 		do {
 			player.setXpos(rnd.nextInt(20));
 			player.setYpos(rnd.nextInt(20));
-		} while (this.board[player.getXpos()].charAt(player.getYpos()) != 'w');
+		} while (this.board[player.getXpos()].charAt(player.getYpos()) == 'w');
 	}
 
 	public void playerMoved(int delta_x, int delta_y, String direction) {
@@ -506,7 +510,7 @@ public class Main extends Application {
 		Main.me.setOkCounter(0);
 		Main.me.setPLAYER_STATE(Player.STATE.IDLE);
 
-		for (String ip : okQueue) {
+		for (String ip : this.okQueue) {
 			Main.writeMsg("ok", ip);
 		}
 	}
@@ -605,8 +609,9 @@ public class Main extends Application {
 
 	public synchronized Player getPlayerAt(int x, int y) {
 		for (Player p : this.players) {
-			if (p.getXpos() == x && p.getYpos() == y)
+			if (p.getXpos() == x && p.getYpos() == y) {
 				return p;
+			}
 		}
 		return null;
 	}
