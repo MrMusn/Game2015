@@ -8,6 +8,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Random;
 
 import javafx.application.Application;
@@ -27,8 +29,8 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-	private static final String NAME = "Natas";
-	private static final int X_POS = 10;
+	private static final String NAME = "kongen";
+	private static final int X_POS = 9;
 	private static final int Y_POS = 4;
 
 	private static final int S_PORT = 55552;
@@ -37,7 +39,7 @@ public class Main extends Application {
 	private static final String IP_RANGE = "192.168.0.0/16";
 
 	/** If null, scan ips automatically using range {@link Main#IP_RANGE} */
-	private final static String[] ipArr = { "10.10.133.157", "10.10.140.69" };
+	private final static String[] ipArr = { "10.10.140.69" };
 	/**
 	 * { "10.10.133.157", "10.10.140.154", "10.10.140.228", "10.10.149.132" };
 	 * // Anders, Muddz, Simon, Mr // Adem
@@ -60,6 +62,8 @@ public class Main extends Application {
 
 	public static Player me;
 	public List<Player> players = new ArrayList<Player>();
+
+	private Queue<String> okQueue = new PriorityQueue<String>();
 
 	private Label[][] fields;
 	private TextArea scoreList;
@@ -173,10 +177,9 @@ public class Main extends Application {
 							regPlayerPoints(lineArr);
 						} else if (line.toLowerCase().startsWith("wait")) {
 							if (Main.me.getTime() <= otherTime) {
-								System.out.println("foo");
+								System.out.println(Main.me.getPLAYER_STATE());
 								Main.me.setTime(otherTime);
-								while (!Main.me.getPLAYER_STATE().equals(
-										Player.STATE.IDLE)) {
+								while (Main.me.getPLAYER_STATE().equals(Player.STATE.CR)) {
 
 								}
 								synchronized (Main.me) {
@@ -184,11 +187,15 @@ public class Main extends Application {
 								}
 								Main.writeMsg("ok",
 										InetAdr.toString().replace("/", ""));
+							} else {
+								okQueue.add(InetAdr.toString().replace("/", ""));
 							}
 						} else if (line.toLowerCase().startsWith("ok")) {
 							synchronized(Main.me){
 								Main.me.setOkCounter(Main.me.getOkCounter() + 1);
 							}
+						} else if (line.toLowerCase().startsWith("done")) {
+
 						}
 					} catch (IOException e) {
 						e.printStackTrace();
@@ -279,10 +286,9 @@ public class Main extends Application {
 		final int x = Integer.parseInt(reqLineArr[1]);
 		final int y = Integer.parseInt(reqLineArr[2]);
 
-		if (player == null) {
+		if (player == null)
 			throw new RuntimeException(
 					"Unknown player address for position change");
-		}
 
 		Platform.runLater(() -> {
 			if (player.getXpos() - x < 0) {
@@ -308,10 +314,9 @@ public class Main extends Application {
 	private void regPlayerPoints(final String[] reqLineArr) {
 		final Player player = getPlayerByName(reqLineArr[1]);
 
-		if (player == null) {
+		if (player == null)
 			throw new RuntimeException(
 					"Unknown name received for point change.");
-		}
 
 		final int pointsChange = Integer.parseInt(reqLineArr[2])
 				- player.getPoints();
@@ -332,9 +337,8 @@ public class Main extends Application {
 	 */
 	private synchronized Player getPlayerBySockAdr(final InetAddress ip) {
 		for (Player p : this.players) {
-			if (p.getIp() != null && p.getIp().toString().equals(ip.toString())) {
+			if (p.getIp() != null && p.getIp().toString().equals(ip.toString()))
 				return p;
-			}
 		}
 
 		return null;
@@ -342,9 +346,8 @@ public class Main extends Application {
 
 	private synchronized Player getPlayerByName(final String name) {
 		for (Player p : this.players) {
-			if (p.getName().equalsIgnoreCase(name)) {
+			if (p.getName().equalsIgnoreCase(name))
 				return p;
-			}
 		}
 
 		return null;
@@ -496,6 +499,7 @@ public class Main extends Application {
 			Main.writeMsg("WAIT", ip);
 		}
 
+		System.out.println(Main.me.getPLAYER_STATE());
 		while (Main.me.getOkCounter() < this.players.size() - 1) {
 
 		}
@@ -503,6 +507,10 @@ public class Main extends Application {
 		playerMoved(Main.me, delta_x, delta_y, direction);
 		Main.me.setOkCounter(0);
 		Main.me.setPLAYER_STATE(Player.STATE.IDLE);
+
+		for (String ip : okQueue) {
+			Main.writeMsg("ok", ip);
+		}
 	}
 
 	public void playerMoved(Player player, int delta_x, int delta_y,
@@ -599,9 +607,8 @@ public class Main extends Application {
 
 	public synchronized Player getPlayerAt(int x, int y) {
 		for (Player p : this.players) {
-			if (p.getXpos() == x && p.getYpos() == y) {
+			if (p.getXpos() == x && p.getYpos() == y)
 				return p;
-			}
 		}
 		return null;
 	}
