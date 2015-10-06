@@ -3,9 +3,11 @@ package game2015;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -30,7 +32,7 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-	private static final String NAME = "Safevandsbælleren";
+	private static final String NAME = "Saftevandsbælleren";
 	private static final int X_POS = 6;
 	private static final int Y_POS = 4;
 
@@ -60,6 +62,9 @@ public class Main extends Application {
 	public static Image image_floor;
 	public static Image image_wall;
 	public static Image hero_right, hero_left, hero_up, hero_down;
+	public static Image fireHor, fireVer;
+	public static Image fireDown, fireLeft, fireRight, fireUp;
+	public static Image fireWallE, fireWallN, fireWallS, fireWallW;
 
 	public static Player me;
 	public List<Player> players = new ArrayList<Player>();
@@ -156,11 +161,12 @@ public class Main extends Application {
 	private void initListen() throws IOException {
 		@SuppressWarnings("resource") // Closed on GUI shutdown
 		ServerSocket srvSocket = new ServerSocket(S_PORT);
+		srvSocket.setSoTimeout(2000);
 
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				// Run until stopped as this handles request delegation
+				// Run until stopped. This handles request delegation
 				while (listenFlag.get()) {
 					Socket sock = null;
 					try {
@@ -185,25 +191,30 @@ public class Main extends Application {
 						else if (line.toLowerCase().startsWith("wait")) {
 							if (Main.me.getTime() <= otherTime) {
 								Main.me.setTime(otherTime);
-								while (Main.me.getPLAYER_STATE().equals(Player.STATE.CR)) {
 
+								while (Main.me.getPLAYER_STATE().equals(Player.STATE.CR)) {
+									//Wait while in STATE.CR
 								}
+
 								synchronized (Main.me) {
 									Main.me.incTime();
 								}
-								Main.writeMsg("ok",
-										InetAdr.toString().replace("/", ""));
+
+								Main.writeMsg("ok", InetAdr.toString().replace("/", ""));
 							} else
 								Main.this.okQueue.add(InetAdr.toString().replace("/", ""));
 						} else if (line.toLowerCase().startsWith("ok"))
 							synchronized(Main.me){
 								Main.me.setOkCounter(Main.me.getOkCounter() + 1);
 							}
+					} catch (SocketTimeoutException e) {
+						//Expected, do nothing
 					} catch (IOException e) {
 						e.printStackTrace();
 					} finally {
 						try {
-							sock.close();
+							if (sock != null)
+								sock.close();
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
@@ -214,40 +225,39 @@ public class Main extends Application {
 		}).start();
 
 		// IP scan server - accepts client queries
-		new Thread(() -> {
-			try {
-				this.scanSrvSock = new ServerSocket(SCAN_PORT);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-
-			final long start = System.currentTimeMillis();
-
-			while (start + (180 * 1000) > System.currentTimeMillis()) { // 180
-				// seconds
-				// to
-				// connect
+		if (ipArr == null)
+			new Thread(() -> {
 				try {
-					Socket sock = this.scanSrvSock.accept();
-
-					final byte[] buffer = new byte[64];
-					if (sock.getInputStream().read(buffer) > 0
-							&& new String(buffer).startsWith("Knock knock")) {
-						sock.getOutputStream().write(
-								"Who is it?".getBytes("UTF-8"));
-						System.out.println("Accepted connection");
-					}
-				} catch (Exception e) {
-					// ignore
-					// e.printStackTrace();
-				}
-				try {
-					this.scanSrvSock.close();
+					this.scanSrvSock = new ServerSocket(SCAN_PORT);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-			}
-		}).start();
+
+				final long start = System.currentTimeMillis();
+
+				//Listen for 180 seconds
+				while (start + (180 * 1000) > System.currentTimeMillis()) {
+					try {
+						Socket sock = this.scanSrvSock.accept();
+
+						final byte[] buffer = new byte[64];
+						if (sock.getInputStream().read(buffer) > 0
+								&& new String(buffer).startsWith("Knock knock")) {
+							sock.getOutputStream().write(
+									"Who is it?".getBytes("UTF-8"));
+							System.out.println("Accepted connection");
+						}
+					} catch (Exception e) {
+						// ignore
+						// e.printStackTrace();
+					}
+					try {
+						this.scanSrvSock.close();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}).start();
 	}
 
 	/**
@@ -391,6 +401,17 @@ public class Main extends Application {
 			hero_down = new Image(getClass().getResourceAsStream(
 					"Image/heroDown.png"), size, size, false, false);
 
+			fireHor = new Image(getClass().getResourceAsStream("Image/fireHorizontal.png"), size, size, false, false);
+			fireVer = new Image(getClass().getResourceAsStream("Image/fireVertical.png"), size, size, false, false);
+			fireDown = new Image(getClass().getResourceAsStream("Image/fireDown.png"), size, size, false, false);
+			fireLeft = new Image(getClass().getResourceAsStream("Image/fireLeft.png"), size, size, false, false);
+			fireRight = new Image(getClass().getResourceAsStream("Image/fireRight.png"), size, size, false, false);
+			fireUp = new Image(getClass().getResourceAsStream("Image/fireUp.png"), size, size, false, false);
+			fireWallE = new Image(getClass().getResourceAsStream("Image/fireWallEast.png"), size, size, false, false);
+			fireWallN = new Image(getClass().getResourceAsStream("Image/fireWallNorth.png"), size, size, false, false);
+			fireWallS = new Image(getClass().getResourceAsStream("Image/fireWallSouth.png"), size, size, false, false);
+			fireWallW = new Image(getClass().getResourceAsStream("Image/fireWallWest.png"), size, size, false, false);
+
 			this.fields = new Label[20][20];
 			for (int j = 0; j < 20; j++)
 				for (int i = 0; i < 20; i++) {
@@ -434,6 +455,13 @@ public class Main extends Application {
 				case RIGHT:
 					playerMoved(+1, 0, "right");
 					break;
+				case SPACE:
+					try {
+						fire(me);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					break;
 				case L:
 					if (ipArr == null)
 						ips.addAll(new IPScan(IP_RANGE, SCAN_PORT).scan());
@@ -475,14 +503,14 @@ public class Main extends Application {
 		listenFlag.set(false);
 	}
 
-	private void randomizePos(Player player) {
+	private void randomizePos(final Player player) {
 		// 0-19
 		final Random rnd = new Random();
 
 		do {
 			player.setXpos(rnd.nextInt(20));
 			player.setYpos(rnd.nextInt(20));
-		} while (this.board[player.getXpos()].charAt(player.getYpos()) == 'w');
+		} while (this.board[player.getYpos()].charAt(player.getXpos()) == 'w');
 	}
 
 	public void playerMoved(int delta_x, int delta_y, String direction) {
@@ -593,6 +621,85 @@ public class Main extends Application {
 			if (p.getXpos() == x && p.getYpos() == y)
 				return p;
 		return null;
+	}
+
+	/*
+	 * Game weapon logic
+	 */
+
+	public void fire(final Player player) throws IllegalArgumentException, IllegalAccessException {
+		final String dir = player.getDirection();
+		final int x = player.getXpos();
+		final int y = player.getYpos();
+
+		//Collect coordinates until wall or player hit
+		final List<Point> points = new ArrayList<Point>();
+		int curX = x, curY = y;
+		Point p;
+
+		switch (dir) {
+		case "up":
+			while (!isWall((p = new Point(curX, --curY))) && getPlayerAt(p.x, p.y) == null)
+				points.add(p);
+			break;
+		case "down":
+			while (!isWall((p = new Point(curX, ++curY))) && getPlayerAt(p.x, p.y) == null)
+				points.add(p);
+			break;
+		case "right":
+			while (!isWall((p = new Point(++curX, curY))) && getPlayerAt(p.x, p.y) == null)
+				points.add(p);
+			break;
+		case "left":
+			while (!isWall((p = new Point(--curX, curY))) && getPlayerAt(p.x, p.y) == null)
+				points.add(p);
+			break;
+		}
+
+		if (points.size() > 0)
+			Platform.runLater(new Runnable() {
+				@Override
+				public void run() {
+					for (int iPoint = 0; iPoint < points.size() - 1; ++iPoint)
+						try {
+							fields[points.get(iPoint).x][points.get(iPoint).y].setGraphic(getImgViewByDir(dir));
+						} catch (IllegalArgumentException | IllegalAccessException e) {
+							e.printStackTrace();
+						}
+					}
+				});
+	}
+
+	/**
+	 * Iterates through all fields from this class to get the appropriate fire Image
+	 *
+	 * @param dir A String direction
+	 * @return
+	 * @throws IllegalArgumentException
+	 * @throws IllegalAccessException
+	 */
+	private ImageView getImgViewByDir(final String dir) throws IllegalArgumentException, IllegalAccessException {
+		for (Field classField : this.getClass().getFields())
+			if (classField.getName().equalsIgnoreCase("fire" + dir))
+				return new ImageView((Image) classField.get(null));
+
+		return null;
+	}
+
+	private boolean isWall(final int x, final int y) {
+		return this.board[y].charAt(x) == 'w';
+	}
+
+	private boolean isWall(Point point) {
+		return isWall(point.x, point.y);
+	}
+
+	/** @Immutable */
+	private class Point {
+		public final int x;
+		public final int y;
+
+		public Point(int x, int y) { this.x = x; this.y = y; }
 	}
 
 	public static void main(String[] args) {
