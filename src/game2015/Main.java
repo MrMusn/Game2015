@@ -229,6 +229,7 @@ public class Main extends Application {
 			new Thread(() -> {
 				try {
 					this.scanSrvSock = new ServerSocket(SCAN_PORT);
+					this.scanSrvSock.setSoTimeout(2000);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -236,7 +237,7 @@ public class Main extends Application {
 				final long start = System.currentTimeMillis();
 
 				//Listen for 180 seconds
-				while (start + (180 * 1000) > System.currentTimeMillis()) {
+				while (start + (180 * 1000) > System.currentTimeMillis() && listenFlag.get()) {
 					try {
 						Socket sock = this.scanSrvSock.accept();
 
@@ -682,8 +683,13 @@ public class Main extends Application {
 								break;
 							}
 
-					}
-				});
+					//Draw wall collision if no player hit
+					final Point lastPoint = points.get(points.size() - 1);
+
+					if (getPlayerAt(lastPoint.x, lastPoint.y) == null)
+						fields[lastPoint.x][lastPoint.y].setGraphic(getWallImgViewByDir(dir));
+				}
+			});
 	}
 
 	/**
@@ -700,6 +706,21 @@ public class Main extends Application {
 				return new ImageView((Image) classField.get(null));
 
 		return null;
+	}
+
+	private ImageView getWallImgViewByDir(final String dir) {
+		switch (dir) {
+		case "up":
+			return new ImageView(fireWallN);
+		case "down":
+			return new ImageView(fireWallS);
+		case "right":
+			return new ImageView(fireWallE);
+		case "left":
+			return new ImageView(fireWallW);
+		default:
+			return null;
+		}
 	}
 
 	private boolean isWall(final int x, final int y) {
