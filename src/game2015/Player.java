@@ -98,11 +98,10 @@ public class Player {
 	 * @param p
 	 * @param broadcast
 	 */
-	public void addPoints(int p, final boolean broadcast) {
+	public synchronized void addPoints(int p, final boolean broadcast) {
 		this.point += p;
-		if (broadcast) {
+		if (broadcast)
 			Main.broadcastPoints(this, this.point);
-		}
 	}
 
 	public final int getPoints() {
@@ -134,11 +133,11 @@ public class Player {
 		this.time = time;
 	}
 
-	public void incTime() {
+	public synchronized void incTime() {
 		this.time++;
 	}
 
-	public int getTime() {
+	public synchronized int getTime() {
 		return this.time;
 	}
 }
