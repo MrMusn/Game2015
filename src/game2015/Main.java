@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javafx.application.Application;
@@ -51,6 +54,9 @@ public class Main extends Application {
 
 	/** Server socket for accepting incoming scans from other clients */
 	private ServerSocket scanSrvSock;
+
+	/** Time in ms before removing fire graphics from screen */
+	private static final int fireGraphicsDelay = 100;
 
 	public static final int size = 20;
 	public static final int scene_height = size * 20 + 100;
@@ -711,6 +717,21 @@ public class Main extends Application {
 					System.out.println(debugStr);
 				}
 			});
+
+		//Wait fireGraphicsDelay and remove fire graphics
+		final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+		scheduler.schedule(new Runnable() {
+			@Override
+			public void run() {
+				for (Point cord : cords)
+					Platform.runLater(() -> {
+						synchronized (fields) {
+							if (getPlayerAt(cord.x, cord.y) == null)
+								fields[cord.x][cord.y].setGraphic(new ImageView(image_floor));
+						}
+					});
+			}
+		}, fireGraphicsDelay, TimeUnit.MILLISECONDS);
 	}
 
 	private void killPlayer(final Player killed, final Player killer) {
