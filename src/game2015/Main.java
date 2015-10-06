@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -29,7 +30,7 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-	private static final String NAME = "SvinePusteren";
+	private static final String NAME = "Safevandsbælleren";
 	private static final int X_POS = 6;
 	private static final int Y_POS = 4;
 
@@ -39,7 +40,7 @@ public class Main extends Application {
 	private static final String IP_RANGE = "192.168.0.0/16";
 
 	/** If null, scan ips automatically using range {@link Main#IP_RANGE} */
-	private final static String[] ipArr = { "10.10.140.69", "10.10.133.157" };
+	private final static String[] ipArr = { "10.10.140.70", "10.10.140.69" };
 	/**
 	 * { "10.10.133.157", "10.10.140.154", "10.10.140.228", "10.10.149.132" };
 	 * // Anders, Muddz, Simon, Mr // Adem
@@ -64,20 +65,31 @@ public class Main extends Application {
 	public List<Player> players = new ArrayList<Player>();
 
 	private Queue<String> okQueue = new ConcurrentLinkedQueue<String>();
+	private AtomicBoolean listenFlag = new AtomicBoolean(true);
 
 	private Label[][] fields;
 	private TextArea scoreList;
 
 	private String[] board = { // 20x20
-			"wwwwwwwwwwwwwwwwwwww", "w        ww        w", "w w  w  www w  w  ww",
-			"w w  w   ww w  w  ww", "w  w               w",
-			"w w w w w w w  w  ww", "w w     www w  w  ww",
-			"w w     w w w  w  ww", "w   w w  w  w  w   w",
-			"w     w  w  w  w   w", "w ww ww        w  ww",
-			"w  w w    w    w  ww", "w        ww w  w  ww",
-			"w         w w  w  ww", "w        w     w  ww",
-			"w  w              ww", "w  w www  w w  ww ww",
-			"w w      ww w     ww", "w   w   ww  w      w",
+			"wwwwwwwwwwwwwwwwwwww",
+			"w        ww        w",
+			"w w  w  www w  w  ww",
+			"w w  w   ww w  w  ww",
+			"w  w               w",
+			"w w w w w w w  w  ww",
+			"w w     www w  w  ww",
+			"w w     w w w  w  ww",
+			"w   w w  w  w  w   w",
+			"w     w  w  w  w   w",
+			"w ww ww        w  ww",
+			"w  w w    w    w  ww",
+			"w        ww w  w  ww",
+			"w         w w  w  ww",
+			"w        w     w  ww",
+			"w  w              ww",
+			"w  w www  w w  ww ww",
+			"w w      ww w     ww",
+			"w   w   ww  w      w",
 	"wwwwwwwwwwwwwwwwwwww" };
 
 	/**
@@ -142,18 +154,14 @@ public class Main extends Application {
 	 *             {@link BufferedReader#readLine()}
 	 */
 	private void initListen() throws IOException {
-		@SuppressWarnings("resource")
-		// Closed on GUI shutdown
+		@SuppressWarnings("resource") // Closed on GUI shutdown
 		ServerSocket srvSocket = new ServerSocket(S_PORT);
-		// final long start = System.currentTimeMillis();
 
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				// Run forever as this handles request delegation
-				while (true) { // (start + (30 * 1000)) >
-					// System.currentTimeMillis()) { //30 seconds to
-					// connect
+				// Run until stopped as this handles request delegation
+				while (listenFlag.get()) {
 					Socket sock = null;
 					try {
 						sock = srvSocket.accept();
@@ -162,20 +170,19 @@ public class Main extends Application {
 
 						final String line = reader.readLine();
 						final String[] lineArr = line.split(" ");
-						System.out.println("read: " + line);
 
 						int otherTime = Integer.parseInt(lineArr[lineArr.length - 1]);
 
 						final InetAddress InetAdr = sock.getInetAddress();
 						final Player player = getPlayerBySockAdr(InetAdr);
 
-						if (line.toLowerCase().startsWith("name")) {
+						if (line.toLowerCase().startsWith("name"))
 							regPlayer(lineArr, InetAdr);
-						} else if (line.toLowerCase().startsWith("move")) {
+						else if (line.toLowerCase().startsWith("move"))
 							regPlayerMove(lineArr, player);
-						} else if (line.toLowerCase().startsWith("point")) {
+						else if (line.toLowerCase().startsWith("point"))
 							regPlayerPoints(lineArr);
-						} else if (line.toLowerCase().startsWith("wait")) {
+						else if (line.toLowerCase().startsWith("wait")) {
 							if (Main.me.getTime() <= otherTime) {
 								Main.me.setTime(otherTime);
 								while (Main.me.getPLAYER_STATE().equals(Player.STATE.CR)) {
@@ -186,16 +193,12 @@ public class Main extends Application {
 								}
 								Main.writeMsg("ok",
 										InetAdr.toString().replace("/", ""));
-							} else {
+							} else
 								Main.this.okQueue.add(InetAdr.toString().replace("/", ""));
-							}
-						} else if (line.toLowerCase().startsWith("ok")) {
+						} else if (line.toLowerCase().startsWith("ok"))
 							synchronized(Main.me){
 								Main.me.setOkCounter(Main.me.getOkCounter() + 1);
 							}
-						} else if (line.toLowerCase().startsWith("done")) {
-
-						}
 					} catch (IOException e) {
 						e.printStackTrace();
 					} finally {
@@ -285,21 +288,19 @@ public class Main extends Application {
 		final int x = Integer.parseInt(reqLineArr[1]);
 		final int y = Integer.parseInt(reqLineArr[2]);
 
-		if (player == null) {
+		if (player == null)
 			throw new RuntimeException(
 					"Unknown player address for position change");
-		}
 
 		Platform.runLater(() -> {
-			if (player.getXpos() - x < 0) {
+			if (player.getXpos() - x < 0)
 				playerMoved(player, 1, 0, "right"); // right
-			} else if (player.getXpos() - x > 0) {
+			else if (player.getXpos() - x > 0)
 				playerMoved(player, -1, 0, "left"); // left
-			} else if (player.getYpos() - y < 0) {
+			else if (player.getYpos() - y < 0)
 				playerMoved(player, 0, 1, "down"); // down
-			} else if (player.getYpos() - y > 0) {
+			else if (player.getYpos() - y > 0)
 				playerMoved(player, 0, -1, "up"); // up
-			}
 		});
 	}
 
@@ -314,10 +315,9 @@ public class Main extends Application {
 	private void regPlayerPoints(final String[] reqLineArr) {
 		final Player player = getPlayerByName(reqLineArr[1]);
 
-		if (player == null) {
+		if (player == null)
 			throw new RuntimeException(
 					"Unknown name received for point change.");
-		}
 
 		final int pointsChange = Integer.parseInt(reqLineArr[2])
 				- player.getPoints();
@@ -337,21 +337,17 @@ public class Main extends Application {
 	 * @return A known player object or null if not found
 	 */
 	private synchronized Player getPlayerBySockAdr(final InetAddress ip) {
-		for (Player p : this.players) {
-			if (p.getIp() != null && p.getIp().toString().equals(ip.toString())) {
+		for (Player p : this.players)
+			if (p.getIp() != null && p.getIp().toString().equals(ip.toString()))
 				return p;
-			}
-		}
 
 		return null;
 	}
 
 	private synchronized Player getPlayerByName(final String name) {
-		for (Player p : this.players) {
-			if (p.getName().equalsIgnoreCase(name)) {
+		for (Player p : this.players)
+			if (p.getName().equalsIgnoreCase(name))
 				return p;
-			}
-		}
 
 		return null;
 	}
@@ -396,7 +392,7 @@ public class Main extends Application {
 					"Image/heroDown.png"), size, size, false, false);
 
 			this.fields = new Label[20][20];
-			for (int j = 0; j < 20; j++) {
+			for (int j = 0; j < 20; j++)
 				for (int i = 0; i < 20; i++) {
 					switch (this.board[j].charAt(i)) {
 					case 'w':
@@ -413,7 +409,6 @@ public class Main extends Application {
 					}
 					boardGrid.add(this.fields[i][j], i, j);
 				}
-			}
 			this.scoreList.setEditable(false);
 
 			grid.add(mazeLabel, 0, 0);
@@ -440,13 +435,11 @@ public class Main extends Application {
 					playerMoved(+1, 0, "right");
 					break;
 				case L:
-					if (ipArr == null) {
+					if (ipArr == null)
 						ips.addAll(new IPScan(IP_RANGE, SCAN_PORT).scan());
-					} else {
-						for (String ip : ipArr) {
+					else
+						for (String ip : ipArr)
 							ips.add(ip);
-						}
-					}
 					initConnect();
 					break;
 				default:
@@ -454,7 +447,7 @@ public class Main extends Application {
 				}
 			});
 
-			// Setting up standard players
+			// Setting up me
 			Main.me = new Player(NAME, X_POS, Y_POS, "up");
 			randomizePos(me);
 			synchronized (this) {
@@ -474,12 +467,12 @@ public class Main extends Application {
 
 	@Override
 	public void stop() throws IOException {
-		if (this.srvSock != null) {
+		if (this.srvSock != null)
 			this.srvSock.close();
-		}
-		if (this.scanSrvSock != null && !this.scanSrvSock.isClosed()) {
+		if (this.scanSrvSock != null && !this.scanSrvSock.isClosed())
 			this.scanSrvSock.close();
-		}
+
+		listenFlag.set(false);
 	}
 
 	private void randomizePos(Player player) {
@@ -498,9 +491,8 @@ public class Main extends Application {
 		synchronized (Main.me) {
 			Main.me.incTime();
 		}
-		for (String ip : ips) {
+		for (String ip : ips)
 			Main.writeMsg("WAIT", ip);
-		}
 
 		while (Main.me.getOkCounter() < this.players.size() - 1) {
 
@@ -510,9 +502,8 @@ public class Main extends Application {
 		Main.me.setOkCounter(0);
 		Main.me.setPLAYER_STATE(Player.STATE.IDLE);
 
-		for (String ip : this.okQueue) {
+		for (String ip : this.okQueue)
 			Main.writeMsg("ok", ip);
-		}
 	}
 
 	public void playerMoved(Player player, int delta_x, int delta_y,
@@ -521,9 +512,8 @@ public class Main extends Application {
 		int x = player.getXpos(), y = player.getYpos();
 
 		if (this.board[y + delta_y].charAt(x + delta_x) == 'w') {
-			if (player.equals(Main.me)) {
+			if (player.equals(Main.me))
 				player.addPoints(-1);
-			}
 		} else {
 			Player p = getPlayerAt(x + delta_x, y + delta_y);
 			if (p != null) {
@@ -532,37 +522,31 @@ public class Main extends Application {
 					p.addPoints(-10);
 				}
 			} else {
-				if (player.equals(Main.me)) {
+				if (player.equals(Main.me))
 					player.addPoints(1);
-				}
 
 				this.fields[x][y].setGraphic(new ImageView(image_floor));
 				x += delta_x;
 				y += delta_y;
 
-				if (direction.equals("right")) {
+				if (direction.equals("right"))
 					this.fields[x][y].setGraphic(new ImageView(hero_right));
-				}
 				;
-				if (direction.equals("left")) {
+				if (direction.equals("left"))
 					this.fields[x][y].setGraphic(new ImageView(hero_left));
-				}
 				;
-				if (direction.equals("up")) {
+				if (direction.equals("up"))
 					this.fields[x][y].setGraphic(new ImageView(hero_up));
-				}
 				;
-				if (direction.equals("down")) {
+				if (direction.equals("down"))
 					this.fields[x][y].setGraphic(new ImageView(hero_down));
-				}
 				;
 
 				player.setXpos(x);
 				player.setYpos(y);
 
-				if (player.equals(Main.me)) {
+				if (player.equals(Main.me))
 					broadcastMove();
-				}
 			}
 		}
 		this.scoreList.setText(getScoreList());
@@ -581,9 +565,8 @@ public class Main extends Application {
 		synchronized (Main.me) {
 			Main.me.incTime();
 		}
-		for (final String ip : ips) {
+		for (final String ip : ips)
 			Main.writeMsg("POINT " + player.getName() + " " + points, ip);
-		}
 	}
 
 	/**
@@ -593,26 +576,22 @@ public class Main extends Application {
 		synchronized (Main.me) {
 			Main.me.incTime();
 		}
-		for (final String ip : ips) {
+		for (final String ip : ips)
 			Main.writeMsg(
 					"move " + Main.me.getXpos() + " " + Main.me.getYpos(), ip);
-		}
 	}
 
 	public synchronized String getScoreList() {
 		StringBuffer b = new StringBuffer(100);
-		for (Player p : this.players) {
+		for (Player p : this.players)
 			b.append(p + "\r\n");
-		}
 		return b.toString();
 	}
 
 	public synchronized Player getPlayerAt(int x, int y) {
-		for (Player p : this.players) {
-			if (p.getXpos() == x && p.getYpos() == y) {
+		for (Player p : this.players)
+			if (p.getXpos() == x && p.getYpos() == y)
 				return p;
-			}
-		}
 		return null;
 	}
 
