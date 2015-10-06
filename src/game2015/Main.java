@@ -42,11 +42,8 @@ public class Main extends Application {
 	private static final String IP_RANGE = "192.168.0.0/16";
 
 	/** If null, scan ips automatically using range {@link Main#IP_RANGE} */
-	private final static String[] ipArr = { "10.10.140.70", "10.10.140.69" };
-	/**
-	 * { "10.10.133.157", "10.10.140.154", "10.10.140.228", "10.10.149.132" };
-	 * // Anders, Muddz, Simon, Mr // Adem
-	 **/
+	private final static String[] ipArr = { "192.168.5.128" };
+
 	private final static List<String> ips = new ArrayList<String>();
 
 	/** Server socket listening for connections. Saved for destruction on exit. */
@@ -139,7 +136,8 @@ public class Main extends Application {
 			e.printStackTrace();
 		} finally {
 			try {
-				sock.close();
+				if (sock != null)
+					sock.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -187,6 +185,9 @@ public class Main extends Application {
 						else if (line.toLowerCase().startsWith("move"))
 							regPlayerMove(lineArr, player);
 						else if (line.toLowerCase().startsWith("point"))
+							// TODO muligvis synkroniseringsproblem ved logisk
+							// tid her? Mangler en "done" fra klienter, der
+							// træder ud af critical region state
 							regPlayerPoints(lineArr);
 						else if (line.toLowerCase().startsWith("wait")) {
 							if (Main.me.getTime() <= otherTime) {
@@ -482,8 +483,7 @@ public class Main extends Application {
 			synchronized (this) {
 				this.players.add(Main.me);
 			}
-			this.fields[Main.me.getXpos()][Main.me.getYpos()]
-					.setGraphic(new ImageView(hero_up));
+			this.fields[Main.me.getXpos()][Main.me.getYpos()].setGraphic(new ImageView(hero_up));
 
 			this.scoreList.setText(getScoreList());
 
@@ -508,10 +508,14 @@ public class Main extends Application {
 		// 0-19
 		final Random rnd = new Random();
 
+		int x, y;
 		do {
-			player.setXpos(rnd.nextInt(20));
-			player.setYpos(rnd.nextInt(20));
-		} while (this.board[player.getYpos()].charAt(player.getXpos()) == 'w');
+			x = rnd.nextInt(20);
+			y = rnd.nextInt(20);
+		} while (this.board[y].charAt(x) == 'w' || getPlayerAt(x, y) != null);
+
+		player.setXpos(x);
+		player.setYpos(y);
 	}
 
 	public void playerMoved(int delta_x, int delta_y, String direction) {
@@ -560,16 +564,16 @@ public class Main extends Application {
 
 				if (direction.equals("right"))
 					this.fields[x][y].setGraphic(new ImageView(hero_right));
-				;
+
 				if (direction.equals("left"))
 					this.fields[x][y].setGraphic(new ImageView(hero_left));
-				;
+
 				if (direction.equals("up"))
 					this.fields[x][y].setGraphic(new ImageView(hero_up));
-				;
+
 				if (direction.equals("down"))
 					this.fields[x][y].setGraphic(new ImageView(hero_down));
-				;
+
 
 				player.setXpos(x);
 				player.setYpos(y);
@@ -606,8 +610,7 @@ public class Main extends Application {
 			Main.me.incTime();
 		}
 		for (final String ip : ips)
-			Main.writeMsg(
-					"move " + Main.me.getXpos() + " " + Main.me.getYpos(), ip);
+			Main.writeMsg("move " + Main.me.getXpos() + " " + Main.me.getYpos(), ip);
 	}
 
 	public synchronized String getScoreList() {
@@ -634,62 +637,111 @@ public class Main extends Application {
 		final int y = player.getYpos();
 
 		//Collect coordinates until wall or player hit
-		final List<Point> points = new ArrayList<Point>();
+		final List<Point> cords = new ArrayList<Point>();
 		int curX = x, curY = y;
 		Point p;
+		Player playerHit = null;
 
 		switch (dir) {
 		case "up":
-			while (!isWall((p = new Point(curX, --curY))) && getPlayerAt(p.x, p.y) == null)
-				points.add(p);
+			while (!isWall((p = new Point(curX, --curY))) && (playerHit = getPlayerAt(p.x, p.y)) == null)
+				cords.add(p);
 			break;
 		case "down":
-			while (!isWall((p = new Point(curX, ++curY))) && getPlayerAt(p.x, p.y) == null)
-				points.add(p);
+			while (!isWall((p = new Point(curX, ++curY))) && (playerHit = getPlayerAt(p.x, p.y)) == null)
+				cords.add(p);
 			break;
 		case "right":
-			while (!isWall((p = new Point(++curX, curY))) && getPlayerAt(p.x, p.y) == null)
-				points.add(p);
+			while (!isWall((p = new Point(++curX, curY))) && (playerHit = getPlayerAt(p.x, p.y)) == null)
+				cords.add(p);
 			break;
 		case "left":
-			while (!isWall((p = new Point(--curX, curY))) && getPlayerAt(p.x, p.y) == null)
-				points.add(p);
+			while (!isWall((p = new Point(--curX, curY))) && (playerHit = getPlayerAt(p.x, p.y)) == null)
+				cords.add(p);
 			break;
+		default:
+			final RuntimeException up = new RuntimeException("Invalid direction for player " + player.getName());
+			throw up;
 		}
 
-		if (points.size() > 0)
+		// In case we stopped iterating above because of encountering a player,
+		// add that Point. We need to be able to get the position of this player
+		// for removal.
+		if (playerHit != null)
+			cords.add(p);
+
+		if (cords.size() > 0)
 			Platform.runLater(new Runnable() {
 				@Override
 				public void run() {
 					//Draw directional start of fire
 					try {
-						fields[points.get(0).x][points.get(0).y].setGraphic(getImgViewByDir(dir));
+						fields[cords.get(0).x][cords.get(0).y].setGraphic(getFireImgViewByDir(dir));
 					} catch (IllegalArgumentException | IllegalAccessException e1) {
-						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					}
 
 					//Draw vertical or horizontal fire
-					if (points.size() > 1)
-						for (int iPoint = 1; iPoint < points.size() - 1; ++iPoint)
+					if (cords.size() > 1)
+						for (int iPoint = 1; iPoint < cords.size() - 1; ++iPoint)
 							switch (dir) {
 							case "up":
 							case "down":
-								fields[points.get(iPoint).x][points.get(iPoint).y].setGraphic(new ImageView(fireVer));
+								fields[cords.get(iPoint).x][cords.get(iPoint).y].setGraphic(new ImageView(fireVer));
 								break;
 							case "right":
 							case "left":
-								fields[points.get(iPoint).x][points.get(iPoint).y].setGraphic(new ImageView(fireHor));
+								fields[cords.get(iPoint).x][cords.get(iPoint).y].setGraphic(new ImageView(fireHor));
 								break;
 							}
 
 					//Draw wall collision if no player hit
-					final Point lastPoint = points.get(points.size() - 1);
+					final Point lastCord = cords.get(cords.size() - 1);
 
-					if (getPlayerAt(lastPoint.x, lastPoint.y) == null)
-						fields[lastPoint.x][lastPoint.y].setGraphic(getWallImgViewByDir(dir));
+					final Player playerKilled;
+
+					if ((playerKilled = getPlayerAt(lastCord.x, lastCord.y)) == null)
+						fields[lastCord.x][lastCord.y].setGraphic(getFireWallImgViewByDir(dir));
+					else {
+						fields[lastCord.x][lastCord.y].setGraphic(getFireWallImgViewByDir(dir));
+						killPlayer(playerKilled, player);
+					}
+
+					String debugStr = playerKilled == null ? "Wall hit" : "Player hit";
+					System.out.println(debugStr);
 				}
 			});
+	}
+
+	private void killPlayer(final Player killed, final Player killer) {
+		if (killer.equals(me)) {
+			killed.addPoints(-100);
+			killer.addPoints(100);
+		}
+
+		//Redraw killed player
+		Platform.runLater(() -> {
+			fields[killed.getXpos()][killed.getYpos()].setGraphic(new ImageView(image_floor));
+
+			randomizePos(killed);
+			try {
+				fields[killed.getXpos()][killed.getYpos()].setGraphic(getHeroImgViewByDir(killed.getDirection()));
+			} catch (Exception e) {e.printStackTrace();}
+		});
+
+
+		Platform.runLater(() -> {
+			this.scoreList.setText(getScoreList());
+		});
+	}
+
+	//hero_up, hero_down...
+	private ImageView getHeroImgViewByDir(final String dir) throws IllegalArgumentException, IllegalAccessException {
+		for (Field classField : this.getClass().getFields())
+			if (classField.getName().equalsIgnoreCase("hero_" + dir))
+				return new ImageView((Image) classField.get(null));
+
+		return null;
 	}
 
 	/**
@@ -700,7 +752,7 @@ public class Main extends Application {
 	 * @throws IllegalArgumentException
 	 * @throws IllegalAccessException
 	 */
-	private ImageView getImgViewByDir(final String dir) throws IllegalArgumentException, IllegalAccessException {
+	private ImageView getFireImgViewByDir(final String dir) throws IllegalArgumentException, IllegalAccessException {
 		for (Field classField : this.getClass().getFields())
 			if (classField.getName().equalsIgnoreCase("fire" + dir))
 				return new ImageView((Image) classField.get(null));
@@ -708,7 +760,7 @@ public class Main extends Application {
 		return null;
 	}
 
-	private ImageView getWallImgViewByDir(final String dir) {
+	private ImageView getFireWallImgViewByDir(final String dir) {
 		switch (dir) {
 		case "up":
 			return new ImageView(fireWallN);
