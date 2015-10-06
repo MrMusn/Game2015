@@ -660,12 +660,28 @@ public class Main extends Application {
 			Platform.runLater(new Runnable() {
 				@Override
 				public void run() {
-					for (int iPoint = 0; iPoint < points.size() - 1; ++iPoint)
-						try {
-							fields[points.get(iPoint).x][points.get(iPoint).y].setGraphic(getImgViewByDir(dir));
-						} catch (IllegalArgumentException | IllegalAccessException e) {
-							e.printStackTrace();
-						}
+					//Draw directional start of fire
+					try {
+						fields[points.get(0).x][points.get(0).y].setGraphic(getImgViewByDir(dir));
+					} catch (IllegalArgumentException | IllegalAccessException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+
+					//Draw vertical or horizontal fire
+					if (points.size() > 1)
+						for (int iPoint = 1; iPoint < points.size() - 1; ++iPoint)
+							switch (dir) {
+							case "up":
+							case "down":
+								fields[points.get(iPoint).x][points.get(iPoint).y].setGraphic(new ImageView(fireVer));
+								break;
+							case "right":
+							case "left":
+								fields[points.get(iPoint).x][points.get(iPoint).y].setGraphic(new ImageView(fireHor));
+								break;
+							}
+
 					}
 				});
 	}
