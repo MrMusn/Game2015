@@ -222,15 +222,14 @@ public class Main extends Application {
 							//syntax: lasers <fromName>
 							try {
 								fire(player);
-							} catch (IllegalArgumentException
-									| IllegalAccessException e) {
+							} catch (IllegalArgumentException e) {
 								e.printStackTrace();
 							}
 						else if (line.toLowerCase().startsWith("killed")) {
 							//syntax: killed <name> <newX> <newY>
-							final int deltaX = player.getXpos() - Integer.parseInt(lineArr[2]);
-							final int deltaY = player.getXpos() - Integer.parseInt(lineArr[3]);
-							redrawKilledPlayer(player, deltaX, deltaY);
+							final int newX = Integer.parseInt(lineArr[2]);
+							final int newY = Integer.parseInt(lineArr[3]);
+							redrawKilledPlayer(getPlayerByName(lineArr[1]), newX, newY);
 						}
 					} catch (SocketTimeoutException e) {
 						//Expected, do nothing
@@ -551,7 +550,7 @@ public class Main extends Application {
 			for (String ip : ips)
 				Main.writeMsg("WAIT", ip);
 
-			while (Main.me.getOkCounter() < this.players.size() - 1) {}
+			while (Main.me.getOkCounter() < this.players.size() - 1) {/**/}
 
 			Main.me.setPLAYER_STATE(Player.STATE.CR);
 			playerMoved(Main.me, delta_x, delta_y, direction);
@@ -682,7 +681,7 @@ public class Main extends Application {
 	 * Game weapon logic
 	 */
 
-	public void fire() throws IllegalArgumentException, IllegalAccessException {
+	public void fire() throws IllegalArgumentException {
 		synchronized (actionLock) {
 			Main.me.setPLAYER_STATE(Player.STATE.VENTER_OK);
 			Main.me.incTime();
@@ -690,9 +689,10 @@ public class Main extends Application {
 			for (String ip : ips)
 				Main.writeMsg("WAIT", ip);
 
-			while (Main.me.getOkCounter() < this.players.size() - 1) {}
+			while (Main.me.getOkCounter() < this.players.size() - 1) {/* */}
 
 			Main.me.setPLAYER_STATE(Player.STATE.CR);
+
 			broadcastLasers();
 
 			fire(me);
@@ -704,7 +704,7 @@ public class Main extends Application {
 		}
 	}
 
-	public void fire(final Player player) throws IllegalArgumentException, IllegalAccessException {
+	public void fire(final Player player) throws IllegalArgumentException {
 		final String dir = player.getDirection();
 		final int x = player.getXpos();
 		final int y = player.getYpos();
@@ -815,6 +815,7 @@ public class Main extends Application {
 				try {
 					fields[killed.getXpos()][killed.getYpos()].setGraphic(getHeroImgViewByDir(killed.getDirection()));
 				} catch (Exception e) {e.printStackTrace();}
+				broadcastKilled(killed);
 			});
 
 
@@ -824,11 +825,16 @@ public class Main extends Application {
 		}
 	}
 
-	private void redrawKilledPlayer(final Player player, final int deltaX, final int deltaY) {
-		playerMoved(player, deltaX, deltaY, player.getDirection());
+	private void redrawKilledPlayer(final Player player, final int newX, final int newY) {
+		Platform.runLater(() -> {
+			//playerMoved(player, deltaX, deltaY, player.getDirection());
+			fields[player.getXpos()][player.getYpos()].setGraphic(new ImageView(image_floor));
+			try {
+				fields[newX][newY].setGraphic(getHeroImgViewByDir(player.getDirection()));
+			} catch (Exception e) {e.printStackTrace();}
+		});
 	}
 
-	//hero_up, hero_down...
 	private ImageView getHeroImgViewByDir(final String dir) throws IllegalArgumentException, IllegalAccessException {
 		for (Field classField : this.getClass().getFields())
 			if (classField.getName().equalsIgnoreCase("hero_" + dir))
