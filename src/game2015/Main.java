@@ -35,7 +35,7 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-	private static final String NAME = "Saftevandsbælleren";
+	private static final String NAME = "MinMor";
 	private static final int X_POS = 6;
 	private static final int Y_POS = 4;
 
@@ -45,7 +45,7 @@ public class Main extends Application {
 	private static final String IP_RANGE = "192.168.0.0/16";
 
 	/** If null, scan ips automatically using range {@link Main#IP_RANGE} */
-	private final static String[] ipArr = { "192.168.5.128" };
+	private final static String[] ipArr = { "192.168.5.138" };
 
 	private final static List<String> ips = new ArrayList<String>();
 
@@ -57,6 +57,7 @@ public class Main extends Application {
 
 	/** Time in ms before removing fire graphics from screen */
 	private static final int fireGraphicsDelay = 100;
+	private final Object actionLock = new Object();
 
 	public static final int size = 20;
 	public static final int scene_height = size * 20 + 100;
@@ -149,6 +150,12 @@ public class Main extends Application {
 			}
 		}
 	}
+	/*
+	 * TODO synkroniseringsproblem ved writeMsg på point updates. Mangler at
+	 * implementere en "done" besked, der sendes når klient træder ud af
+	 * critical region state, ellers risikere man at modtage en point update fra
+	 * en anden klient, før dennes point update når ud til alle
+	 */
 
 	/**
 	 * Initializes the listening server thread, responsible for request
@@ -191,9 +198,6 @@ public class Main extends Application {
 						else if (line.toLowerCase().startsWith("move"))
 							regPlayerMove(lineArr, player);
 						else if (line.toLowerCase().startsWith("point"))
-							// TODO muligvis synkroniseringsproblem ved logisk
-							// tid her? Mangler en "done" fra klienter, der
-							// træder ud af critical region state
 							regPlayerPoints(lineArr);
 						else if (line.toLowerCase().startsWith("wait")) {
 							if (Main.me.getTime() <= otherTime) {
@@ -214,6 +218,20 @@ public class Main extends Application {
 							synchronized(Main.me){
 								Main.me.setOkCounter(Main.me.getOkCounter() + 1);
 							}
+						else if (line.toLowerCase().startsWith("lasers"))
+							//syntax: lasers <fromName>
+							try {
+								fire(player);
+							} catch (IllegalArgumentException
+									| IllegalAccessException e) {
+								e.printStackTrace();
+							}
+						else if (line.toLowerCase().startsWith("killed")) {
+							//syntax: killed <name> <newX> <newY>
+							final int deltaX = player.getXpos() - Integer.parseInt(lineArr[2]);
+							final int deltaY = player.getXpos() - Integer.parseInt(lineArr[3]);
+							redrawKilledPlayer(player, deltaX, deltaY);
+						}
 					} catch (SocketTimeoutException e) {
 						//Expected, do nothing
 					} catch (IOException e) {
@@ -465,7 +483,7 @@ public class Main extends Application {
 					break;
 				case SPACE:
 					try {
-						fire(me);
+						fire();
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -525,24 +543,24 @@ public class Main extends Application {
 	}
 
 	public void playerMoved(int delta_x, int delta_y, String direction) {
-		Main.me.setPLAYER_STATE(Player.STATE.VENTER_OK);
+		synchronized (actionLock) {
+			Main.me.setPLAYER_STATE(Player.STATE.VENTER_OK);
 
-		synchronized (Main.me) {
 			Main.me.incTime();
+
+			for (String ip : ips)
+				Main.writeMsg("WAIT", ip);
+
+			while (Main.me.getOkCounter() < this.players.size() - 1) {}
+
+			Main.me.setPLAYER_STATE(Player.STATE.CR);
+			playerMoved(Main.me, delta_x, delta_y, direction);
+			Main.me.setOkCounter(0);
+			Main.me.setPLAYER_STATE(Player.STATE.IDLE);
+
+			for (String ip : this.okQueue)
+				Main.writeMsg("ok", ip);
 		}
-		for (String ip : ips)
-			Main.writeMsg("WAIT", ip);
-
-		while (Main.me.getOkCounter() < this.players.size() - 1) {
-
-		}
-
-		playerMoved(Main.me, delta_x, delta_y, direction);
-		Main.me.setOkCounter(0);
-		Main.me.setPLAYER_STATE(Player.STATE.IDLE);
-
-		for (String ip : this.okQueue)
-			Main.writeMsg("ok", ip);
 	}
 
 	public void playerMoved(Player player, int delta_x, int delta_y,
@@ -593,7 +611,8 @@ public class Main extends Application {
 	}
 
 	/**
-	 * Broadcast point changes to all ips
+	 * Broadcast point changes to all ips.
+	 * Static to allow calling from classes that doesn't know the this object (quick-fix)
 	 *
 	 * @param player
 	 *            The player whose points has changed
@@ -611,12 +630,38 @@ public class Main extends Application {
 	/**
 	 * Broadcast to all ips that you just moved to a new position
 	 */
-	public void broadcastMove() {
+	private void broadcastMove() {
+		broadcast("move " + Main.me.getXpos() + " " + Main.me.getYpos());
+	}
+
+	/**
+	 * Broadcasts to all connected clients that a laser has been fired from you.<br>
+	 * It's up to each client to calculate path (and collisons) for graphics.
+	 * Clients are NOT expected to determine who was killed, a broadcastKilled
+	 * is later sent to signal a kill.
+	 */
+	private void broadcastLasers() {
+		broadcast("lasers " + me.getName());
+	}
+
+	/**
+	 * Broadcasts to all connected clients that you (this.me) has killed another
+	 * player. Broadcast to draw lasers to all clients should have been sent
+	 * prior to this.
+	 *
+	 * @param playerKilled
+	 *            The killed player's object
+	 */
+	private void broadcastKilled(final Player playerKilled) {
+		broadcast("killed " + playerKilled.getName() + " " + playerKilled.getXpos() + " " + playerKilled.getYpos());
+	}
+
+	private void broadcast(final String msg) {
 		synchronized (Main.me) {
 			Main.me.incTime();
 		}
 		for (final String ip : ips)
-			Main.writeMsg("move " + Main.me.getXpos() + " " + Main.me.getYpos(), ip);
+			Main.writeMsg(msg, ip);
 	}
 
 	public synchronized String getScoreList() {
@@ -636,6 +681,28 @@ public class Main extends Application {
 	/*
 	 * Game weapon logic
 	 */
+
+	public void fire() throws IllegalArgumentException, IllegalAccessException {
+		synchronized (actionLock) {
+			Main.me.setPLAYER_STATE(Player.STATE.VENTER_OK);
+			Main.me.incTime();
+
+			for (String ip : ips)
+				Main.writeMsg("WAIT", ip);
+
+			while (Main.me.getOkCounter() < this.players.size() - 1) {}
+
+			Main.me.setPLAYER_STATE(Player.STATE.CR);
+			broadcastLasers();
+
+			fire(me);
+			Main.me.setOkCounter(0);
+			Main.me.setPLAYER_STATE(Player.STATE.IDLE);
+
+			for (String ip : this.okQueue)
+				Main.writeMsg("ok", ip);
+		}
+	}
 
 	public void fire(final Player player) throws IllegalArgumentException, IllegalAccessException {
 		final String dir = player.getDirection();
@@ -701,7 +768,7 @@ public class Main extends Application {
 								break;
 							}
 
-					//Draw wall collision if no player hit
+					//Draw wall or kill player
 					final Point lastCord = cords.get(cords.size() - 1);
 
 					final Player playerKilled;
@@ -738,22 +805,27 @@ public class Main extends Application {
 		if (killer.equals(me)) {
 			killed.addPoints(-100);
 			killer.addPoints(100);
+
+
+			//Redraw killed player
+			Platform.runLater(() -> {
+				fields[killed.getXpos()][killed.getYpos()].setGraphic(new ImageView(image_floor));
+
+				randomizePos(killed);
+				try {
+					fields[killed.getXpos()][killed.getYpos()].setGraphic(getHeroImgViewByDir(killed.getDirection()));
+				} catch (Exception e) {e.printStackTrace();}
+			});
+
+
+			Platform.runLater(() -> {
+				this.scoreList.setText(getScoreList());
+			});
 		}
+	}
 
-		//Redraw killed player
-		Platform.runLater(() -> {
-			fields[killed.getXpos()][killed.getYpos()].setGraphic(new ImageView(image_floor));
-
-			randomizePos(killed);
-			try {
-				fields[killed.getXpos()][killed.getYpos()].setGraphic(getHeroImgViewByDir(killed.getDirection()));
-			} catch (Exception e) {e.printStackTrace();}
-		});
-
-
-		Platform.runLater(() -> {
-			this.scoreList.setText(getScoreList());
-		});
+	private void redrawKilledPlayer(final Player player, final int deltaX, final int deltaY) {
+		playerMoved(player, deltaX, deltaY, player.getDirection());
 	}
 
 	//hero_up, hero_down...
